@@ -1,0 +1,10 @@
+# Robots.txt for SWAPP.AI
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /editor/
+Disallow: /checkout
+
+# Sitemaps
+Sitemap: https://swappai.vercel.app/sitemap.xml

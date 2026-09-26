@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import Navbar from '../components/marketing/Navbar';
 import Footer from '../components/marketing/Footer';
+import FAQSection from '../components/marketing/FAQSection';
 import TemplateCard from '../components/templates/TemplateCard';
 import SlidePreview from '../components/templates/SlidePreview';
 import { useScrollAnimation } from '../hooks/useScrollAnimation';
@@ -800,6 +801,7 @@ export default function HomePage() {
       <AIRemixSection />
       <HowItWorks />
       <PricingSection />
+      <FAQSection />
       <FinalCTA />
       <Footer />
     </div>

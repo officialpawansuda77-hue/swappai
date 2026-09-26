@@ -17,13 +17,31 @@ export default function Footer() {
               Make something worth swiping.
             </p>
             <div className="flex gap-4 mt-6">
-              <a href="#" className="w-9 h-9 rounded-lg border border-[rgba(255,255,255,0.1)] flex items-center justify-center hover:border-[rgba(255,255,255,0.3)] hover:text-[#FF5A00] transition-all text-[rgba(247,245,240,0.5)]">
+              <a
+                href="https://instagram.com"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Instagram"
+                className="w-9 h-9 rounded-lg border border-[rgba(255,255,255,0.1)] flex items-center justify-center hover:border-[rgba(255,255,255,0.3)] hover:text-[#FF5A00] transition-all text-[rgba(247,245,240,0.5)]"
+              >
                 <Instagram size={15} />
               </a>
-              <a href="#" className="w-9 h-9 rounded-lg border border-[rgba(255,255,255,0.1)] flex items-center justify-center hover:border-[rgba(255,255,255,0.3)] hover:text-[#FF5A00] transition-all text-[rgba(247,245,240,0.5)]">
+              <a
+                href="https://twitter.com"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Twitter / X"
+                className="w-9 h-9 rounded-lg border border-[rgba(255,255,255,0.1)] flex items-center justify-center hover:border-[rgba(255,255,255,0.3)] hover:text-[#FF5A00] transition-all text-[rgba(247,245,240,0.5)]"
+              >
                 <Twitter size={15} />
               </a>
-              <a href="#" className="w-9 h-9 rounded-lg border border-[rgba(255,255,255,0.1)] flex items-center justify-center hover:border-[rgba(255,255,255,0.3)] hover:text-[#FF5A00] transition-all text-[rgba(247,245,240,0.5)]">
+              <a
+                href="https://linkedin.com"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="LinkedIn"
+                className="w-9 h-9 rounded-lg border border-[rgba(255,255,255,0.1)] flex items-center justify-center hover:border-[rgba(255,255,255,0.3)] hover:text-[#FF5A00] transition-all text-[rgba(247,245,240,0.5)]"
+              >
                 <Linkedin size={15} />
               </a>
             </div>
@@ -33,10 +51,15 @@ export default function Footer() {
           <div>
             <p className="text-[11px] uppercase tracking-[0.15em] font-semibold text-[rgba(247,245,240,0.4)] mb-5">Product</p>
             <ul className="flex flex-col gap-3">
-              {['Templates', 'Canvas', 'AI Remix', 'Pricing'].map(item => (
-                <li key={item}>
-                  <Link to={`/${item.toLowerCase().replace(' ', '-')}`} className="text-[14px] text-[rgba(247,245,240,0.55)] hover:text-[#F7F5F0] transition-colors no-underline">
-                    {item}
+              {[
+                { label: 'Templates', path: '/templates' },
+                { label: 'Canvas Editor', path: '/editor/new' },
+                { label: 'AI Generator', path: '/create' },
+                { label: 'Pricing Plans', path: '/pricing' },
+              ].map(item => (
+                <li key={item.label}>
+                  <Link to={item.path} className="text-[14px] text-[rgba(247,245,240,0.55)] hover:text-[#F7F5F0] transition-colors no-underline">
+                    {item.label}
                   </Link>
                 </li>
               ))}
@@ -46,26 +69,37 @@ export default function Footer() {
           <div>
             <p className="text-[11px] uppercase tracking-[0.15em] font-semibold text-[rgba(247,245,240,0.4)] mb-5">Company</p>
             <ul className="flex flex-col gap-3">
-              {['About', 'Contact', 'FAQ'].map(item => (
-                <li key={item}>
-                  <a href="#" className="text-[14px] text-[rgba(247,245,240,0.55)] hover:text-[#F7F5F0] transition-colors no-underline">
-                    {item}
-                  </a>
-                </li>
-              ))}
+              <li>
+                <Link to="/templates" className="text-[14px] text-[rgba(247,245,240,0.55)] hover:text-[#F7F5F0] transition-colors no-underline">
+                  Template Library
+                </Link>
+              </li>
+              <li>
+                <Link to="/faq" className="text-[14px] text-[rgba(247,245,240,0.55)] hover:text-[#F7F5F0] transition-colors no-underline">
+                  FAQ
+                </Link>
+              </li>
+              <li>
+                <a href="mailto:support@swapp.ai" className="text-[14px] text-[rgba(247,245,240,0.55)] hover:text-[#F7F5F0] transition-colors no-underline">
+                  Contact Support
+                </a>
+              </li>
             </ul>
           </div>
 
           <div>
             <p className="text-[11px] uppercase tracking-[0.15em] font-semibold text-[rgba(247,245,240,0.4)] mb-5">Legal</p>
             <ul className="flex flex-col gap-3">
-              {['Privacy', 'Terms'].map(item => (
-                <li key={item}>
-                  <a href="#" className="text-[14px] text-[rgba(247,245,240,0.55)] hover:text-[#F7F5F0] transition-colors no-underline">
-                    {item}
-                  </a>
-                </li>
-              ))}
+              <li>
+                <Link to="/privacy" className="text-[14px] text-[rgba(247,245,240,0.55)] hover:text-[#F7F5F0] transition-colors no-underline">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link to="/terms" className="text-[14px] text-[rgba(247,245,240,0.55)] hover:text-[#F7F5F0] transition-colors no-underline">
+                  Terms of Service
+                </Link>
+              </li>
             </ul>
           </div>
         </div>

@@ -14,17 +14,26 @@ import AdminTemplateNewPage from './pages/AdminTemplateNewPage';
 import AdminTemplateEditPage from './pages/AdminTemplateEditPage';
 import AdminCategoriesPage from './pages/AdminCategoriesPage';
 import PricingPage from './pages/PricingPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import TermsPage from './pages/TermsPage';
+import FAQPage from './pages/FAQPage';
+import NotFoundPage from './pages/NotFoundPage';
+import CookieConsent from './components/common/CookieConsent';
 
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <CookieConsent />
         <Routes>
           {/* Public */}
           <Route path="/" element={<HomePage />} />
           <Route path="/templates" element={<TemplatesPage />} />
           <Route path="/templates/:id" element={<TemplatePreviewPage />} />
           <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/faq" element={<FAQPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/sign-in" element={<LoginPage />} />
@@ -41,8 +50,8 @@ export default function App() {
           <Route path="/admin/templates/:id" element={<AdminTemplateEditPage />} />
           <Route path="/admin/categories" element={<AdminCategoriesPage />} />
 
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {/* Fallback Custom 404 */}
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

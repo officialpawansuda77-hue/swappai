@@ -24,6 +24,7 @@ export default function Navbar() {
     { label: 'How it works', to: '/#how-it-works' },
     { label: 'Features', to: '/#features' },
     { label: 'Pricing', to: '/pricing' },
+    { label: 'FAQ', to: '/faq' },
   ];
 
   return (
