@@ -12,6 +12,7 @@ interface AuthContextValue {
   isConfigured: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
+  signInWithGoogle: () => Promise<{ error: Error | null }>;
   signInAsDemo: (role?: 'admin' | 'user') => void;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -26,6 +27,7 @@ const AuthContext = createContext<AuthContextValue>({
   isConfigured: false,
   signIn: async () => ({ error: null }),
   signUp: async () => ({ error: null }),
+  signInWithGoogle: async () => ({ error: null }),
   signInAsDemo: () => {},
   signOut: async () => {},
   refreshProfile: async () => {},
@@ -63,20 +65,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('user_id', userId)
         .single();
 
-      if (error || !data) {
-        setProfile(null);
+      if (!error && data) {
+        setProfile({
+          id: data.id,
+          userId: data.user_id,
+          email: data.email || '',
+          fullName: data.full_name || '',
+          avatarUrl: data.avatar_url,
+          role: (data.role || 'user') as UserRole,
+          createdAt: data.created_at,
+        });
         return;
       }
 
-      setProfile({
-        id: data.id,
-        userId: data.user_id,
-        email: data.email || '',
-        fullName: data.full_name || '',
-        avatarUrl: data.avatar_url,
-        role: (data.role || 'user') as UserRole,
-        createdAt: data.created_at,
-      });
+      // If profile row not in database yet (e.g. freshly signed in via Google OAuth)
+      const { data: authData } = await supabase.auth.getUser();
+      const currentUser = authData?.user;
+      if (currentUser && currentUser.id === userId) {
+        const fullName =
+          currentUser.user_metadata?.full_name ||
+          currentUser.user_metadata?.name ||
+          currentUser.email?.split('@')[0] ||
+          'Creator';
+        const avatarUrl =
+          currentUser.user_metadata?.avatar_url ||
+          currentUser.user_metadata?.picture ||
+          undefined;
+
+        // Try upserting into profiles table
+        try {
+          await supabase.from('profiles').upsert(
+            {
+              user_id: currentUser.id,
+              email: currentUser.email,
+              full_name: fullName,
+              avatar_url: avatarUrl,
+              role: 'user',
+            },
+            { onConflict: 'user_id' }
+          );
+        } catch {
+          // ignore if table error
+        }
+
+        setProfile({
+          id: currentUser.id,
+          userId: currentUser.id,
+          email: currentUser.email || '',
+          fullName,
+          avatarUrl,
+          role: 'user',
+          createdAt: new Date().toISOString(),
+        });
+      } else {
+        setProfile(null);
+      }
     } catch {
       setProfile(null);
     }
@@ -164,6 +207,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const signInWithGoogle = async () => {
+    if (!isSupabaseConfigured) {
+      return {
+        error: new Error(
+          'Supabase .env file configured nahi hai. Kripya root directory me .env file banayein aur VITE_SUPABASE_URL aur VITE_SUPABASE_ANON_KEY dalein.'
+        ),
+      };
+    }
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/login`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
+      return { error: (error as Error) || null };
+    } catch (err: unknown) {
+      return { error: (err as Error) || new Error('Google sign-in initiation failed') };
+    }
+  };
+
   const signInAsDemo = (role: 'admin' | 'user' = 'admin') => {
     const demoProfile: UserProfile = {
       id: 'demo-profile-' + role,
@@ -208,6 +276,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isConfigured: isSupabaseConfigured,
         signIn,
         signUp,
+        signInWithGoogle,
         signInAsDemo,
         signOut,
         refreshProfile,
