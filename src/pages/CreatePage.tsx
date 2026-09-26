@@ -33,10 +33,10 @@ export default function CreatePage() {
   const [limitError, setLimitError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !profile && !user) {
+    if (!authLoading && !user) {
       navigate('/pricing', { replace: true });
     }
-  }, [authLoading, profile, user, navigate]);
+  }, [authLoading, user, navigate]);
 
   if (authLoading) {
     return (

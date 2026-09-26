@@ -4,7 +4,7 @@ import { Menu, X, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function Navbar() {
-  const { profile, isAdmin, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
@@ -70,13 +70,8 @@ export default function Navbar() {
 
             {/* Desktop CTA */}
             <div className="hidden md:flex items-center gap-3">
-              {profile ? (
+              {user ? (
                 <>
-                  {isAdmin && (
-                    <Link to="/admin" className="text-[13px] font-semibold text-[#FF5A00] hover:underline px-2">
-                      Admin Panel
-                    </Link>
-                  )}
                   <Link to="/dashboard" className="nav-link font-medium">
                     Dashboard
                   </Link>
@@ -106,7 +101,7 @@ export default function Navbar() {
 
             {/* Mobile burger */}
             <div className="flex md:hidden items-center gap-3">
-              <Link to={profile ? "/create" : "/pricing"} className="btn-accent btn-sm flex items-center gap-1.5">
+              <Link to={user ? "/create" : "/pricing"} className="btn-accent btn-sm flex items-center gap-1.5">
                 Create
                 <ArrowRight size={13} strokeWidth={2.5} />
               </Link>
@@ -137,17 +132,8 @@ export default function Navbar() {
               </Link>
             ))}
             <div className="mt-6 flex flex-col gap-3">
-              {profile ? (
+              {user ? (
                 <>
-                  {isAdmin && (
-                    <Link
-                      to="/admin"
-                      className="py-3 text-[16px] font-semibold text-[#FF5A00] text-center"
-                      onClick={() => setMenuOpen(false)}
-                    >
-                      Admin Panel
-                    </Link>
-                  )}
                   <Link
                     to="/dashboard"
                     className="btn-ghost w-full text-center justify-center"

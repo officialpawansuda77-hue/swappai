@@ -45,16 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = useCallback(async (userId: string) => {
     if (!isSupabaseConfigured) {
-      const saved = localStorage.getItem('swapp_demo_user');
-      if (saved) {
-        try {
-          setProfile(JSON.parse(saved));
-        } catch {
-          setProfile(null);
-        }
-      } else {
-        setProfile(null);
-      }
+      setProfile(null);
       return;
     }
 
@@ -126,18 +117,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Purge any legacy demo user from browser storage
+    try {
+      localStorage.removeItem('swapp_demo_user');
+    } catch {
+      // ignore
+    }
+
     if (!isSupabaseConfigured) {
-      // Check saved demo user
-      const saved = localStorage.getItem('swapp_demo_user');
-      if (saved) {
-        try {
-          setProfile(JSON.parse(saved));
-        } catch {
-          setProfile(null);
-        }
-      } else {
-        setProfile(null);
-      }
+      setProfile(null);
       setLoading(false);
       return;
     }
@@ -149,29 +137,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         fetchProfile(session.user.id).finally(() => setLoading(false));
       } else {
-        const saved = localStorage.getItem('swapp_demo_user');
-        if (saved) {
-          try {
-            setProfile(JSON.parse(saved));
-          } catch {
-            setProfile(null);
-          }
-        } else {
-          setProfile(null);
-        }
+        setProfile(null);
         setLoading(false);
       }
     }).catch(() => {
-      const saved = localStorage.getItem('swapp_demo_user');
-      if (saved) {
-        try {
-          setProfile(JSON.parse(saved));
-        } catch {
-          setProfile(null);
-        }
-      } else {
-        setProfile(null);
-      }
+      setProfile(null);
       setLoading(false);
     });
 
@@ -182,16 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         fetchProfile(session.user.id);
       } else {
-        const saved = localStorage.getItem('swapp_demo_user');
-        if (saved) {
-          try {
-            setProfile(JSON.parse(saved));
-          } catch {
-            setProfile(null);
-          }
-        } else {
-          setProfile(null);
-        }
+        setProfile(null);
       }
     });
 
@@ -259,21 +220,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signInAsDemo = (role: 'admin' | 'user' = 'admin') => {
-    const demoProfile: UserProfile = {
-      id: 'demo-profile-' + role,
-      userId: 'demo-' + role + '-id',
-      email: `${role}@swapp.ai`,
-      fullName: role === 'admin' ? 'Demo Admin' : 'Demo Creator',
-      role: role,
-      createdAt: new Date().toISOString(),
-    };
-    setProfile(demoProfile);
-    localStorage.setItem('swapp_demo_user', JSON.stringify(demoProfile));
+  const signInAsDemo = () => {
+    // Disabled in production
   };
 
   const signOut = async () => {
-    localStorage.removeItem('swapp_demo_user');
+    try {
+      localStorage.removeItem('swapp_demo_user');
+    } catch {
+      // ignore
+    }
     if (isSupabaseConfigured) {
       try {
         await supabase.auth.signOut();

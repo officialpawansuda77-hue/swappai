@@ -32,8 +32,8 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
 
   useEffect(() => {
-    if (!loading && !profile && !user) {
-      navigate('/pricing', { replace: true });
+    if (!loading && !user) {
+      navigate('/login', { replace: true });
       return;
     }
     const uid = user?.id || profile?.userId;
@@ -64,7 +64,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!profile && !user) {
+  if (!user) {
     return null;
   }
 
