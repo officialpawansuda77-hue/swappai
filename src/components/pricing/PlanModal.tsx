@@ -30,6 +30,8 @@ export default function PlanModal({ plan, isOpen, onClose, onContinue }: PlanMod
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-[2px] transition-opacity animate-in fade-in duration-200"
       onClick={e => {
         if (e.target === e.currentTarget) onClose();

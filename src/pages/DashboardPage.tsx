@@ -39,7 +39,7 @@ export default function DashboardPage() {
     const uid = user?.id || profile?.userId;
     if (uid) {
       getUserSubscription(uid).then(setSub);
-      setProjects(getUserProjects());
+      getUserProjects(uid).then(setProjects);
     }
   }, [user, profile, loading, navigate]);
 

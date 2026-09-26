@@ -8,15 +8,16 @@ import TemplateCard from '../components/templates/TemplateCard';
 import SlidePreview from '../components/templates/SlidePreview';
 import { useScrollAnimation } from '../hooks/useScrollAnimation';
 import { getPublishedTemplates, getTemplatesByCategory } from '../lib/templates';
+import { PLANS } from '../lib/subscription';
 import { Template } from '../types';
 
 // ---- STATS STRIP ------------------------------------------------------------
 function StatsStrip() {
   const stats = [
-    { value: '50K+', label: 'Carousels Created' },
-    { value: '12M+', label: 'Slides Designed' },
-    { value: '4.9', label: 'Creator Rating' },
-    { value: '38 min', label: 'Average Time Saved' },
+    { value: '100%', label: 'Editable Canvas Elements' },
+    { value: '1080×1350', label: 'Optimized 4:5 Aspect Ratio' },
+    { value: 'HD Export', label: 'PNG, JPG & PDF Formats' },
+    { value: 'Cloud Sync', label: 'Instant Cloud Autosave' },
   ];
   return (
     <div className="border-y border-[rgba(17,17,17,0.08)] py-10">
@@ -638,35 +639,15 @@ function AIRemixSection() {
 function PricingSection() {
   const plans = [
     {
-      name: 'Free',
-      price: '$0',
-      period: 'forever',
-      features: ['3 carousels / month', '5 templates', 'Canvas editor', 'PNG export'],
-      cta: 'Start free',
+      ...PLANS.starter,
       featured: false,
     },
     {
-      name: 'Creator',
-      price: '$12',
-      period: '/ month',
-      features: ['Unlimited carousels', 'All templates', 'AI Remix (20/mo)', 'PDF export', 'Brand Kit'],
-      cta: 'Start creating',
+      ...PLANS.creator,
       featured: true,
     },
     {
-      name: 'Pro',
-      price: '$29',
-      period: '/ month',
-      features: ['Everything in Creator', 'AI Remix unlimited', 'Priority support', 'Custom fonts'],
-      cta: 'Go Pro',
-      featured: false,
-    },
-    {
-      name: 'Agency',
-      price: '$79',
-      period: '/ month',
-      features: ['Everything in Pro', '10 team members', 'White label export', 'API access'],
-      cta: 'Contact us',
+      ...PLANS.studio,
       featured: false,
     },
   ];
@@ -680,19 +661,22 @@ function PricingSection() {
         <h2 className="text-section text-center mb-4 animate-on-scroll">
           Create more.<br />Design less.
         </h2>
-        <p className="text-body-lg text-center mb-16 animate-on-scroll">No hidden fees. No design degree required.</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <p className="text-body-lg text-center mb-16 animate-on-scroll">Start free. Upgrade when SWAPP becomes part of your publishing rhythm.</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {plans.map((plan, i) => (
-            <div key={plan.name} className={`pricing-card animate-on-scroll animate-on-scroll-delay-${i + 1} ${plan.featured ? 'featured' : ''}`}>
+            <div key={plan.id} className={`pricing-card animate-on-scroll animate-on-scroll-delay-${i + 1} ${plan.featured ? 'featured' : ''}`}>
               <p className={`text-[12px] uppercase tracking-widest font-semibold mb-3 ${plan.featured ? 'text-[rgba(247,245,240,0.5)]' : 'text-[#6B6B67]'}`}>
                 {plan.name}
               </p>
               <div className="flex items-baseline gap-1 mb-1">
                 <span className={`text-[40px] font-black tracking-[-0.03em] ${plan.featured ? 'text-[#F7F5F0]' : 'text-[#111111]'}`} style={{ fontFamily: 'Manrope, Inter, sans-serif' }}>
-                  {plan.price}
+                  {plan.priceFormatted}
                 </span>
                 <span className={`text-[14px] ${plan.featured ? 'text-[rgba(247,245,240,0.5)]' : 'text-[#6B6B67]'}`}>{plan.period}</span>
               </div>
+              <p className={`text-[13px] mb-4 ${plan.featured ? 'text-[rgba(247,245,240,0.65)]' : 'text-[#6B6B67]'}`}>
+                {plan.description}
+              </p>
               <div className={`h-px my-6 ${plan.featured ? 'bg-[rgba(247,245,240,0.1)]' : 'bg-[rgba(17,17,17,0.08)]'}`} />
               <ul className="flex flex-col gap-3 mb-8">
                 {plan.features.map(f => (
@@ -710,7 +694,7 @@ function PricingSection() {
                     : 'border border-[rgba(17,17,17,0.15)] text-[#111111] hover:border-[#111111]'
                 }`}
               >
-                {plan.cta}
+                {plan.ctaText}
               </Link>
             </div>
           ))}

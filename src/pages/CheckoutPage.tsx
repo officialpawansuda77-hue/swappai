@@ -6,10 +6,10 @@ import { getPendingPlan, setPendingPlan, PLANS, PlanDetails } from '../lib/subsc
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const [pending, setPending] = useState(getPendingPlan());
-  const [cardName, setCardName] = useState('Ava Mitchell');
-  const [cardNumber, setCardNumber] = useState('4242 •••• •••• 4242');
-  const [cardExp, setCardExp] = useState('12 / 28');
-  const [cardCvc, setCardCvc] = useState('982');
+  const [cardName, setCardName] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExp, setCardExp] = useState('');
+  const [cardCvc, setCardCvc] = useState('');
   const [processing, setProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -151,6 +151,7 @@ export default function CheckoutPage() {
                   required
                   value={cardName}
                   onChange={e => setCardName(e.target.value)}
+                  placeholder="Full Name on Card"
                   className="w-full bg-[#F7F5F0] border border-[rgba(17,17,17,0.12)] rounded-xl px-4 py-3 text-[14px] text-[#111111] focus:outline-none focus:border-[#FF5A00] focus:bg-white transition-all"
                 />
               </div>
@@ -166,6 +167,7 @@ export default function CheckoutPage() {
                     required
                     value={cardNumber}
                     onChange={e => setCardNumber(e.target.value)}
+                    placeholder="•••• •••• •••• ••••"
                     className="w-full bg-[#F7F5F0] border border-[rgba(17,17,17,0.12)] rounded-xl pl-11 pr-4 py-3 text-[14px] font-mono text-[#111111] focus:outline-none focus:border-[#FF5A00] focus:bg-white transition-all"
                   />
                 </div>

@@ -14,12 +14,15 @@ export default function NotFoundPage() {
           <Compass size={14} /> 404 Error
         </div>
 
-        <h1 className="text-[56px] md:text-[72px] font-black tracking-tight leading-none mb-6">
-          Lost in the feed?
+        <h1 className="text-[56px] md:text-[72px] font-black tracking-tight leading-none mb-4">
+          404
         </h1>
+        <h2 className="text-[24px] md:text-[32px] font-bold text-[#111111] mb-6">
+          This page doesn't exist.
+        </h2>
 
         <p className="text-[17px] md:text-[20px] text-[#6B6B67] max-w-[540px] mx-auto leading-relaxed mb-10">
-          The slide or page you are looking for doesn't exist or has been moved. Let's get you back on track.
+          The slide or page you are looking for has been moved or was never created. Let's get you back to crafting carousels.
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-4 mb-16">
@@ -27,7 +30,7 @@ export default function NotFoundPage() {
             to="/"
             className="btn-accent flex items-center gap-2 px-6 py-3.5 text-[14px] font-semibold"
           >
-            <ArrowLeft size={16} /> Return to Homepage
+            <ArrowLeft size={16} /> Back to SWAPP
           </Link>
           <Link
             to="/templates"

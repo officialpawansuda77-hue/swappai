@@ -11,7 +11,7 @@ export default function LoginPage() {
   const location = useLocation();
 
   const [mode, setMode] = useState<'signup' | 'signin'>('signup');
-  const [fullName, setFullName] = useState('Ava Mitchell');
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -232,7 +232,7 @@ export default function LoginPage() {
                   required
                   value={fullName}
                   onChange={e => setFullName(e.target.value)}
-                  placeholder="Ava Mitchell"
+                  placeholder="e.g. Alex Morgan"
                   className="w-full bg-white border border-[rgba(17,17,17,0.15)] rounded-2xl px-4 py-3.5 text-[14px] text-[#111111] placeholder:text-[#6B6B67]/50 focus:outline-none focus:border-[#FF5A00] shadow-sm transition-all"
                 />
               </div>
@@ -297,34 +297,10 @@ export default function LoginPage() {
               </Link>
             </p>
 
-            <p className="text-[11.5px] text-[#6B6B67]/70 flex items-center justify-center gap-1.5">
-              <Sparkles size={12} className="text-[#FF5A00]" />
-              <span>Demo accounts and subscriptions sync with Supabase and browser persistence.</span>
+            <p className="text-[12px] text-[#6B6B67]/80 flex items-center justify-center gap-1.5">
+              <ShieldCheck size={14} className="text-emerald-600" />
+              <span>Protected with Supabase Auth & Row Level Security</span>
             </p>
-          </div>
-
-          {/* Quick Demo Login Option for instant testing */}
-          <div className="mt-8 pt-6 border-t border-[rgba(17,17,17,0.08)]">
-            <p className="text-[11px] font-semibold text-[#6B6B67] uppercase tracking-wider text-center mb-3">
-              Fast Demo Testing
-            </p>
-            <div className="grid grid-cols-2 gap-2.5">
-              <button
-                type="button"
-                onClick={() => handleDemoContinue('user')}
-                className="py-2.5 px-3 rounded-xl bg-white border border-[rgba(17,17,17,0.12)] text-[#111111] text-[12px] font-semibold hover:border-[#FF5A00] transition-colors flex items-center justify-center gap-1.5"
-              >
-                <span>Demo Creator</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDemoContinue('admin')}
-                className="py-2.5 px-3 rounded-xl bg-white border border-[rgba(17,17,17,0.12)] text-[#111111] text-[12px] font-semibold hover:border-[#FF5A00] transition-colors flex items-center justify-center gap-1.5"
-              >
-                <ShieldCheck size={14} className="text-[#FF5A00]" />
-                <span>Demo Admin</span>
-              </button>
-            </div>
           </div>
         </div>
       </main>

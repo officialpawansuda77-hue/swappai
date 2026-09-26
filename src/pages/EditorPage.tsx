@@ -7,6 +7,7 @@ import {
   RotateCcw, ArrowLeft, Sparkles, X, LayoutGrid, ArrowUp, ArrowDown, Wallpaper
 } from 'lucide-react';
 import { useEditorStore } from '../hooks/useEditorStore';
+import { useAuth } from '../contexts/AuthContext';
 import { getProjectById, saveUserProject, createProjectFromTemplate } from '../lib/projects';
 import SlidePreview from '../components/templates/SlidePreview';
 import TextPanel from '../components/editor/TextPanel';
@@ -629,6 +630,9 @@ function ExportModal({ onClose, onExport }: { onClose: () => void; onExport: (fo
 export default function EditorPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { user, profile, loading: authLoading } = useAuth();
+  const uid = user?.id || profile?.userId;
 
   const templateId = searchParams.get('template');
   const topic = searchParams.get('topic') || undefined;
@@ -642,21 +646,39 @@ export default function EditorPage() {
 
   // Initialize project
   useEffect(() => {
-    if (templateId) {
-      if (!editor.state.project || editor.state.project.templateId !== templateId) {
-        const project = createProjectFromTemplate(templateId, topic);
-        saveUserProject(project);
-        editor.setProject(project);
-      }
-    } else if (projectId && projectId !== 'new') {
-      if (!editor.state.project || editor.state.project.id !== projectId) {
-        const loaded = getProjectById(projectId);
-        if (loaded) {
-          editor.setProject(loaded);
-        } else {
+    if (authLoading) return;
+    let isCancelled = false;
+
+    async function initProject() {
+      if (templateId) {
+        if (!editor.state.project || editor.state.project.templateId !== templateId) {
+          const project = createProjectFromTemplate(templateId, topic, uid);
+          await saveUserProject(project, uid);
+          if (!isCancelled) {
+            editor.setProject(project);
+            navigate(`/editor/${project.id}`, { replace: true });
+          }
+        }
+      } else if (projectId && projectId !== 'new') {
+        if (!editor.state.project || editor.state.project.id !== projectId || editor.state.project.userId !== uid) {
+          const loaded = await getProjectById(projectId, uid);
+          if (!isCancelled) {
+            if (loaded) {
+              editor.setProject(loaded);
+            } else {
+              editor.setProject(null);
+              toast('Project not found or you do not have permission to access it.');
+              setTimeout(() => {
+                navigate('/dashboard', { replace: true });
+              }, 1200);
+            }
+          }
+        }
+      } else if (projectId === 'new' && !templateId) {
+        if (!editor.state.project) {
           const project: Project = {
-            id: projectId,
-            userId: 'demo',
+            id: uuidv4(),
+            userId: uid || 'anonymous',
             name: 'Untitled Carousel',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -669,43 +691,32 @@ export default function EditorPage() {
               elements: [],
             }],
           };
-          saveUserProject(project);
-          editor.setProject(project);
+          await saveUserProject(project, uid);
+          if (!isCancelled) {
+            editor.setProject(project);
+            navigate(`/editor/${project.id}`, { replace: true });
+          }
         }
       }
-    } else if (projectId === 'new' && !templateId) {
-      if (!editor.state.project) {
-        const project: Project = {
-          id: uuidv4(),
-          userId: 'demo',
-          name: 'Untitled Carousel',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          slides: [{
-            id: uuidv4(),
-            order: 0,
-            width: 1080,
-            height: 1350,
-            background: { type: 'solid', value: '#11100E' },
-            elements: [],
-          }],
-        };
-        saveUserProject(project);
-        editor.setProject(project);
-      }
     }
-  }, [templateId, projectId, topic]);
+
+    initProject();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [templateId, projectId, topic, uid, authLoading, navigate]);
 
   // Autosave
-  const doSave = useCallback(() => {
+  const doSave = useCallback(async () => {
     editor.setSaveStatus('saving');
     if (editor.state.project) {
-      saveUserProject(editor.state.project);
+      await saveUserProject(editor.state.project, uid);
     }
     setTimeout(() => {
       editor.setSaveStatus('saved');
     }, 400);
-  }, [editor]);
+  }, [editor, uid]);
 
   useAutosave(editor.state.saveStatus, doSave);
 
@@ -762,7 +773,7 @@ export default function EditorPage() {
   const currentSlide = editor.currentSlide;
   const canvasScale = 0.45;
 
-  if (!project) {
+  if (authLoading || !project) {
     return (
       <div className="min-h-screen bg-[#11100E] flex items-center justify-center">
         <div className="text-center text-[#F7F5F0]">

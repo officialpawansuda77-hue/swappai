@@ -38,6 +38,21 @@ async function run() {
   page.on('pageerror', err => console.error('BROWSER_ERR:', err.message));
 
   try {
+    // 0. Authenticate as Admin
+    console.log('0. Setting Admin session in browser...');
+    await page.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle0' });
+    await page.evaluate(() => {
+      localStorage.setItem('swapp_demo_user', JSON.stringify({
+        id: 'admin-1',
+        userId: 'admin-1',
+        role: 'admin',
+        fullName: 'SWAPP Admin',
+        email: 'admin@swapp.ai',
+        createdAt: new Date().toISOString()
+      }));
+    });
+    console.log('Admin session set.');
+
     // 1. Visit /admin
     console.log('1. Navigating to /admin...');
     await page.goto(`${BASE_URL}/admin`, { waitUntil: 'networkidle0' });

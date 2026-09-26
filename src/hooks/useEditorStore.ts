@@ -309,12 +309,12 @@ export function useEditorStore(initialProject: Project | null = null) {
     });
   }, []);
 
-  const setProject = useCallback((project: Project) => {
+  const setProject = useCallback((project: Project | null) => {
     setState({
       project,
       currentSlideIndex: 0,
       selectedElementId: null,
-      history: [project],
+      history: project ? [project] : [],
       historyIndex: 0,
       saveStatus: 'saved',
       isPreviewMode: false,

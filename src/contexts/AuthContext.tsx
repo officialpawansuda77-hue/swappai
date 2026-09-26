@@ -149,11 +149,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         fetchProfile(session.user.id).finally(() => setLoading(false));
       } else {
-        setProfile(null);
+        const saved = localStorage.getItem('swapp_demo_user');
+        if (saved) {
+          try {
+            setProfile(JSON.parse(saved));
+          } catch {
+            setProfile(null);
+          }
+        } else {
+          setProfile(null);
+        }
         setLoading(false);
       }
     }).catch(() => {
-      setProfile(null);
+      const saved = localStorage.getItem('swapp_demo_user');
+      if (saved) {
+        try {
+          setProfile(JSON.parse(saved));
+        } catch {
+          setProfile(null);
+        }
+      } else {
+        setProfile(null);
+      }
       setLoading(false);
     });
 
@@ -164,7 +182,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         fetchProfile(session.user.id);
       } else {
-        setProfile(null);
+        const saved = localStorage.getItem('swapp_demo_user');
+        if (saved) {
+          try {
+            setProfile(JSON.parse(saved));
+          } catch {
+            setProfile(null);
+          }
+        } else {
+          setProfile(null);
+        }
       }
     });
 
