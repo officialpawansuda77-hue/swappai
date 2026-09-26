@@ -18,28 +18,28 @@ export default function Footer() {
             </p>
             <div className="flex gap-4 mt-6">
               <a
-                href="https://instagram.com"
+                href="https://www.instagram.com/mr_pawansuda_?stkn=MTcybXluN2JjajdvNA=="
                 target="_blank"
-                rel="noreferrer"
-                aria-label="Instagram"
+                rel="noopener noreferrer"
+                aria-label="Instagram (@mr_pawansuda_)"
                 className="w-9 h-9 rounded-lg border border-[rgba(255,255,255,0.1)] flex items-center justify-center hover:border-[rgba(255,255,255,0.3)] hover:text-[#FF5A00] transition-all text-[rgba(247,245,240,0.5)]"
               >
                 <Instagram size={15} />
               </a>
               <a
-                href="https://twitter.com"
+                href="https://x.com/Pawan0Suda"
                 target="_blank"
-                rel="noreferrer"
-                aria-label="Twitter / X"
+                rel="noopener noreferrer"
+                aria-label="X / Twitter (@Pawan0Suda)"
                 className="w-9 h-9 rounded-lg border border-[rgba(255,255,255,0.1)] flex items-center justify-center hover:border-[rgba(255,255,255,0.3)] hover:text-[#FF5A00] transition-all text-[rgba(247,245,240,0.5)]"
               >
                 <Twitter size={15} />
               </a>
               <a
-                href="https://linkedin.com"
+                href="https://www.linkedin.com/in/pawan-suda-046923374?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app"
                 target="_blank"
-                rel="noreferrer"
-                aria-label="LinkedIn"
+                rel="noopener noreferrer"
+                aria-label="LinkedIn (Pawan Suda)"
                 className="w-9 h-9 rounded-lg border border-[rgba(255,255,255,0.1)] flex items-center justify-center hover:border-[rgba(255,255,255,0.3)] hover:text-[#FF5A00] transition-all text-[rgba(247,245,240,0.5)]"
               >
                 <Linkedin size={15} />
