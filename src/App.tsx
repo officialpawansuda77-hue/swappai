@@ -13,6 +13,7 @@ import AdminTemplatesPage from './pages/AdminTemplatesPage';
 import AdminTemplateNewPage from './pages/AdminTemplateNewPage';
 import AdminTemplateEditPage from './pages/AdminTemplateEditPage';
 import AdminCategoriesPage from './pages/AdminCategoriesPage';
+import { AdminGuard } from './components/admin/AdminGuard';
 import PricingPage from './pages/PricingPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsPage from './pages/TermsPage';
@@ -46,11 +47,11 @@ export default function App() {
           <Route path="/editor/:projectId" element={<EditorPage />} />
 
           {/* Admin */}
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/admin/templates" element={<AdminTemplatesPage />} />
-          <Route path="/admin/templates/new" element={<AdminTemplateNewPage />} />
-          <Route path="/admin/templates/:id" element={<AdminTemplateEditPage />} />
-          <Route path="/admin/categories" element={<AdminCategoriesPage />} />
+          <Route path="/admin" element={<AdminGuard><AdminPage /></AdminGuard>} />
+          <Route path="/admin/templates" element={<AdminGuard><AdminTemplatesPage /></AdminGuard>} />
+          <Route path="/admin/templates/new" element={<AdminGuard><AdminTemplateNewPage /></AdminGuard>} />
+          <Route path="/admin/templates/:id" element={<AdminGuard><AdminTemplateEditPage /></AdminGuard>} />
+          <Route path="/admin/categories" element={<AdminGuard><AdminCategoriesPage /></AdminGuard>} />
 
           {/* Fallback Custom 404 */}
           <Route path="*" element={<NotFoundPage />} />

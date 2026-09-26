@@ -22,7 +22,7 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function DashboardPage() {
-  const { profile, user } = useAuth();
+  const { profile, user, loading } = useAuth();
   const navigate = useNavigate();
   const templates = getPublishedTemplates();
   const trending = templates.filter(t => t.isTrending).slice(0, 4);
@@ -32,10 +32,16 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
 
   useEffect(() => {
-    const uid = user?.id || profile?.userId || 'demo-user';
-    getUserSubscription(uid).then(setSub);
-    setProjects(getUserProjects());
-  }, [user, profile]);
+    if (!loading && !profile && !user) {
+      navigate('/pricing', { replace: true });
+      return;
+    }
+    const uid = user?.id || profile?.userId;
+    if (uid) {
+      getUserSubscription(uid).then(setSub);
+      setProjects(getUserProjects());
+    }
+  }, [user, profile, loading, navigate]);
 
   const currentPlan = sub ? PLANS[sub.planId] || PLANS.starter : PLANS.starter;
   const usagePercent = sub ? Math.min(100, Math.round((sub.generationsUsed / sub.monthlyGenerations) * 100)) : 0;
@@ -49,6 +55,18 @@ export default function DashboardPage() {
       navigate('/create');
     }
   };
+
+  if (loading) {
+    return (
+      <div className="bg-[#F7F5F0] min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-[#FF5A00] border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  if (!profile && !user) {
+    return null;
+  }
 
   return (
     <div className="bg-[#F7F5F0] min-h-screen text-[#111111]">

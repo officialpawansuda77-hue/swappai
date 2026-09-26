@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ArrowRight, Sparkles, AlertCircle, X } from 'lucide-react';
 import Navbar from '../components/marketing/Navbar';
@@ -24,13 +24,31 @@ function generateDemoSlides(params: AIGenerationParams) {
 
 export default function CreatePage() {
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const [topic, setTopic] = useState('');
   const [tone, setTone] = useState<ToneType>('educational');
   const [audience, setAudience] = useState<AudienceType>('creator');
   const [slideCount, setSlideCount] = useState(7);
   const [loading, setLoading] = useState(false);
   const [limitError, setLimitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && !profile && !user) {
+      navigate('/pricing', { replace: true });
+    }
+  }, [authLoading, profile, user, navigate]);
+
+  if (authLoading) {
+    return (
+      <div className="bg-[#F7F5F0] min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-[#FF5A00] border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  if (!profile && !user) {
+    return null;
+  }
 
   const handleGenerate = async () => {
     if (!topic.trim()) return;

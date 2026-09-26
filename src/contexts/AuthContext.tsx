@@ -43,14 +43,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = useCallback(async (userId: string) => {
     if (!isSupabaseConfigured) {
-      setProfile({
-        id: 'demo-profile',
-        userId,
-        email: 'admin@swapp.ai',
-        fullName: 'Admin',
-        role: 'admin',
-        createdAt: new Date().toISOString(),
-      });
+      const saved = localStorage.getItem('swapp_demo_user');
+      if (saved) {
+        try {
+          setProfile(JSON.parse(saved));
+        } catch {
+          setProfile(null);
+        }
+      } else {
+        setProfile(null);
+      }
       return;
     }
 
@@ -62,14 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (error || !data) {
-        setProfile({
-          id: 'demo-profile',
-          userId,
-          email: 'admin@swapp.ai',
-          fullName: 'Admin',
-          role: 'admin',
-          createdAt: new Date().toISOString(),
-        });
+        setProfile(null);
         return;
       }
 
@@ -83,43 +78,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         createdAt: data.created_at,
       });
     } catch {
-      setProfile({
-        id: 'demo-profile',
-        userId,
-        email: 'admin@swapp.ai',
-        fullName: 'Admin',
-        role: 'admin',
-        createdAt: new Date().toISOString(),
-      });
+      setProfile(null);
     }
   }, []);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
-      // Check saved demo user or default to demo admin
+      // Check saved demo user
       const saved = localStorage.getItem('swapp_demo_user');
       if (saved) {
         try {
           setProfile(JSON.parse(saved));
         } catch {
-          setProfile({
-            id: 'demo-profile',
-            userId: 'demo-admin-id',
-            email: 'admin@swapp.ai',
-            fullName: 'Demo Admin',
-            role: 'admin',
-            createdAt: new Date().toISOString(),
-          });
+          setProfile(null);
         }
       } else {
-        setProfile({
-          id: 'demo-profile',
-          userId: 'demo-admin-id',
-          email: 'admin@swapp.ai',
-          fullName: 'Demo Admin',
-          role: 'admin',
-          createdAt: new Date().toISOString(),
-        });
+        setProfile(null);
       }
       setLoading(false);
       return;

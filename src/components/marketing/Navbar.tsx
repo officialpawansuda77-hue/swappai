@@ -4,7 +4,7 @@ import { Menu, X, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function Navbar() {
-  const { profile, isAdmin } = useAuth();
+  const { profile, isAdmin, signOut } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
@@ -80,21 +80,33 @@ export default function Navbar() {
                   <Link to="/dashboard" className="nav-link font-medium">
                     Dashboard
                   </Link>
+                  <button
+                    onClick={() => signOut()}
+                    className="text-[13px] text-[#6B6B67] hover:text-[#111111] px-2 font-medium transition-colors bg-transparent border-none cursor-pointer"
+                  >
+                    Log out
+                  </button>
+                  <Link to="/create" className="btn-primary btn-sm flex items-center gap-1.5">
+                    Create carousel
+                    <ArrowRight size={14} strokeWidth={2.5} />
+                  </Link>
                 </>
               ) : (
-                <Link to="/login" className="nav-link font-medium">
-                  Log in
-                </Link>
+                <>
+                  <Link to="/login" className="nav-link font-medium">
+                    Log in
+                  </Link>
+                  <Link to="/pricing" className="btn-primary btn-sm flex items-center gap-1.5">
+                    Create carousel
+                    <ArrowRight size={14} strokeWidth={2.5} />
+                  </Link>
+                </>
               )}
-              <Link to={profile ? "/dashboard" : "/pricing"} className="btn-primary btn-sm flex items-center gap-1.5">
-                Create carousel
-                <ArrowRight size={14} strokeWidth={2.5} />
-              </Link>
             </div>
 
             {/* Mobile burger */}
             <div className="flex md:hidden items-center gap-3">
-              <Link to={profile ? "/dashboard" : "/pricing"} className="btn-accent btn-sm flex items-center gap-1.5">
+              <Link to={profile ? "/create" : "/pricing"} className="btn-accent btn-sm flex items-center gap-1.5">
                 Create
                 <ArrowRight size={13} strokeWidth={2.5} />
               </Link>
@@ -126,17 +138,55 @@ export default function Navbar() {
             ))}
             <div className="mt-6 flex flex-col gap-3">
               {profile ? (
-                <Link to="/dashboard" className="btn-ghost w-full text-center justify-center">
-                  Dashboard
-                </Link>
+                <>
+                  {isAdmin && (
+                    <Link
+                      to="/admin"
+                      className="py-3 text-[16px] font-semibold text-[#FF5A00] text-center"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      Admin Panel
+                    </Link>
+                  )}
+                  <Link
+                    to="/dashboard"
+                    className="btn-ghost w-full text-center justify-center"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    Dashboard
+                  </Link>
+                  <button
+                    onClick={() => { signOut(); setMenuOpen(false); }}
+                    className="py-2.5 text-[14px] text-[#6B6B67] hover:text-[#111111] text-center bg-transparent border-none cursor-pointer"
+                  >
+                    Log out
+                  </button>
+                  <Link
+                    to="/create"
+                    className="btn-primary w-full text-center justify-center"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    Create carousel →
+                  </Link>
+                </>
               ) : (
-                <Link to="/login" className="btn-ghost w-full text-center justify-center">
-                  Log in
-                </Link>
+                <>
+                  <Link
+                    to="/login"
+                    className="btn-ghost w-full text-center justify-center"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    Log in
+                  </Link>
+                  <Link
+                    to="/pricing"
+                    className="btn-primary w-full text-center justify-center"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    Create carousel →
+                  </Link>
+                </>
               )}
-              <Link to={profile ? "/dashboard" : "/pricing"} className="btn-primary w-full text-center justify-center">
-                Create carousel →
-              </Link>
             </div>
           </div>
         </div>
