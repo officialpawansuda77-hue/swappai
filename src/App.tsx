@@ -19,12 +19,14 @@ import TermsPage from './pages/TermsPage';
 import FAQPage from './pages/FAQPage';
 import NotFoundPage from './pages/NotFoundPage';
 import CookieConsent from './components/common/CookieConsent';
+import { Analytics } from '@vercel/analytics/react';
 
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <CookieConsent />
+        <Analytics />
         <Routes>
           {/* Public */}
           <Route path="/" element={<HomePage />} />
