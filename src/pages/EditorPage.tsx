@@ -76,9 +76,11 @@ function CanvasView({ slide, selectedElementId, onSelectElement, onUpdateElement
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
-      onClick={() => {
-        onSelectElement(null);
-        setEditingTextId(null);
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onSelectElement(null);
+          setEditingTextId(null);
+        }
       }}
     >
       {sorted.filter(el => el.visible).map(el => {
@@ -90,6 +92,10 @@ function CanvasView({ slide, selectedElementId, onSelectElement, onUpdateElement
           <div
             key={el.id}
             onMouseDown={(e) => handleMouseDown(e, el)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectElement(el.id);
+            }}
             style={{
               position: 'absolute',
               left: el.x * scale,
@@ -660,7 +666,7 @@ export default function EditorPage() {
           }
         }
       } else if (projectId && projectId !== 'new') {
-        if (!editor.state.project || editor.state.project.id !== projectId || editor.state.project.userId !== uid) {
+        if (!editor.state.project || editor.state.project.id !== projectId) {
           const loaded = await getProjectById(projectId, uid);
           if (!isCancelled) {
             if (loaded) {
