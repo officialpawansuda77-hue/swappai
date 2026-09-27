@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Heart, ArrowRight, Layers } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/marketing/Navbar';
 import Footer from '../components/marketing/Footer';
 import SlidePreview from '../components/templates/SlidePreview';
@@ -9,6 +10,7 @@ import { getTemplateById, getPublishedTemplates } from '../lib/templates';
 export default function TemplatePreviewPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
   const template = getTemplateById(id || '');
   const [currentSlide, setCurrentSlide] = useState(0);
   const [saved, setSaved] = useState(false);
@@ -118,13 +120,20 @@ export default function TemplatePreviewPage() {
               </div>
 
               <div className="flex flex-col gap-3">
-                <Link
-                  to={`/editor/new?template=${template.id}`}
+                <button
+                  onClick={() => {
+                    const hasAdmin = typeof window !== 'undefined' && !!localStorage.getItem('swapp_admin_session');
+                    if (!user && !profile && !hasAdmin) {
+                      navigate('/pricing', { state: { from: `/editor/new?template=${template.id}` } });
+                    } else {
+                      navigate(`/editor/new?template=${template.id}`);
+                    }
+                  }}
                   className="btn-accent flex items-center justify-center gap-2 w-full !py-4 text-[15px]"
                 >
                   Open in Canvas
                   <ArrowRight size={16} />
-                </Link>
+                </button>
                 <button
                   onClick={() => setSaved(!saved)}
                   className={`btn-ghost w-full flex items-center justify-center gap-2 ${saved ? 'border-[#FF5A00] text-[#FF5A00]' : ''}`}

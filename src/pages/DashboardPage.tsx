@@ -32,8 +32,8 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
 
   useEffect(() => {
-    if (!loading && !user) {
-      navigate('/login', { replace: true });
+    if (!loading && !user && !profile && !localStorage.getItem('swapp_admin_session')) {
+      navigate('/pricing', { replace: true });
       return;
     }
     const uid = user?.id || profile?.userId;

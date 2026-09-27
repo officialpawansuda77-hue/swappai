@@ -652,9 +652,17 @@ export default function EditorPage() {
   // Mobile bottom sheet state
   const [mobileSheet, setMobileSheet] = useState<string | null>(null);
 
+  // Paywall guard defense-in-depth
+  useEffect(() => {
+    if (!authLoading && !user && !profile && !localStorage.getItem('swapp_admin_session')) {
+      navigate('/pricing', { replace: true });
+    }
+  }, [authLoading, user, profile, navigate]);
+
   // Initialize project
   useEffect(() => {
     if (authLoading) return;
+    if (!user && !profile && !localStorage.getItem('swapp_admin_session')) return;
     let isCancelled = false;
 
     async function initProject() {

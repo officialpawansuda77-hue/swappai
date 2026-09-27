@@ -14,6 +14,7 @@ import AdminTemplateNewPage from './pages/AdminTemplateNewPage';
 import AdminTemplateEditPage from './pages/AdminTemplateEditPage';
 import AdminCategoriesPage from './pages/AdminCategoriesPage';
 import { AdminGuard } from './components/admin/AdminGuard';
+import { ProductGuard } from './components/auth/ProductGuard';
 import PricingPage from './pages/PricingPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsPage from './pages/TermsPage';
@@ -41,10 +42,10 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/sign-in" element={<LoginPage />} />
 
-          {/* Product */}
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/create" element={<CreatePage />} />
-          <Route path="/editor/:projectId" element={<EditorPage />} />
+          {/* Product (Guarded) */}
+          <Route path="/dashboard" element={<ProductGuard><DashboardPage /></ProductGuard>} />
+          <Route path="/create" element={<ProductGuard><CreatePage /></ProductGuard>} />
+          <Route path="/editor/:projectId" element={<ProductGuard><EditorPage /></ProductGuard>} />
 
           {/* Admin */}
           <Route path="/admin" element={<AdminGuard><AdminPage /></AdminGuard>} />

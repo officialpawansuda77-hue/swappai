@@ -64,6 +64,18 @@ function HeroCarouselDeck() {
   const [activeSlide, setActiveSlide] = useState(0);
   const [animating, setAnimating] = useState(false);
   const autoRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+
+  const [windowWidth, setWindowWidth] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth : 1200
+  );
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const goTo = (idx: number) => {
     if (animating) return;
@@ -78,7 +90,7 @@ function HeroCarouselDeck() {
   const resetAuto = () => {
     if (autoRef.current) clearInterval(autoRef.current);
     autoRef.current = setInterval(() => {
-      setActiveSlide(prev => (prev + 1) % carousel.slides.length);
+      setActiveSlide(p => (p + 1) % carousel.slides.length);
     }, 3400);
   };
 
@@ -86,6 +98,43 @@ function HeroCarouselDeck() {
     resetAuto();
     return () => { if (autoRef.current) clearInterval(autoRef.current); };
   }, []);
+
+  // Touch swipe support for mobile devices
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+    if (Math.abs(deltaX) > 35 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+      if (deltaX < 0) {
+        next();
+      } else {
+        prev();
+      }
+      resetAuto();
+    }
+    touchStartX.current = null;
+    touchStartY.current = null;
+  };
+
+  // Dimensions tailored for 375px, 390px, 412px, 768px, 1440px
+  const isSmallMobile = windowWidth < 380;
+  const isMobile = windowWidth < 640;
+  const isTablet = windowWidth >= 640 && windowWidth < 1024;
+
+  const CARD_W = isSmallMobile ? 180 : isMobile ? 196 : isTablet ? 224 : 248;
+  const CARD_H = isSmallMobile ? 225 : isMobile ? 245 : isTablet ? 280 : 310;
+
+  const offset1Dist = isSmallMobile ? 48 : isMobile ? 54 : isTablet ? 72 : 88;
+  const offset2Dist = isSmallMobile ? 82 : isMobile ? 94 : isTablet ? 126 : 152;
+  const rot1 = isMobile ? 5 : 6;
+  const rot2 = isMobile ? 9 : 11;
+  const scale1 = isMobile ? 0.88 : 0.87;
+  const scale2 = isMobile ? 0.76 : 0.74;
 
   // Compute card transform based on distance from active
   const getCardStyle = (idx: number): React.CSSProperties => {
@@ -102,45 +151,44 @@ function HeroCarouselDeck() {
         transform: 'translateX(0px) rotate(0deg) scale(1)',
         zIndex: 10,
         opacity: 1,
-        boxShadow: '0 40px 90px rgba(0,0,0,0.22), 0 10px 28px rgba(0,0,0,0.14)',
+        boxShadow: '0 30px 70px rgba(0,0,0,0.20), 0 8px 24px rgba(0,0,0,0.12)',
         filter: 'none',
       },
       1: {
-        transform: `translateX(${sign * 88}px) rotate(${sign * 6}deg) scale(0.87)`,
+        transform: `translateX(${sign * offset1Dist}px) rotate(${sign * rot1}deg) scale(${scale1})`,
         zIndex: 6,
-        opacity: 0.80,
-        boxShadow: '0 16px 48px rgba(0,0,0,0.14)',
+        opacity: 0.82,
+        boxShadow: '0 14px 40px rgba(0,0,0,0.12)',
         filter: 'brightness(0.96)',
       },
       2: {
-        transform: `translateX(${sign * 152}px) rotate(${sign * 11}deg) scale(0.74)`,
+        transform: `translateX(${sign * offset2Dist}px) rotate(${sign * rot2}deg) scale(${scale2})`,
         zIndex: 3,
-        opacity: 0.50,
-        boxShadow: '0 8px 24px rgba(0,0,0,0.10)',
+        opacity: 0.52,
+        boxShadow: '0 8px 20px rgba(0,0,0,0.10)',
         filter: 'brightness(0.92)',
       },
     };
     return map[absOff] || {};
   };
 
-  const CARD_W = 248;
-  const CARD_H = 310;
-
   return (
     <div
-      className="relative flex flex-col items-center justify-start"
-      style={{ height: 'min(540px, 70vw + 160px)' }}
+      className="relative flex flex-col items-center justify-start w-full max-w-full"
+      style={{ minHeight: isMobile ? CARD_H + 115 : 440 }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       {/* Decorative ring behind active card */}
       <div
-        className="absolute"
+        className="absolute pointer-events-none"
         style={{
-          width: CARD_W + 32,
-          height: CARD_H + 32,
-          borderRadius: 24,
+          width: CARD_W + (isMobile ? 22 : 32),
+          height: CARD_H + (isMobile ? 22 : 32),
+          borderRadius: 22,
           background: 'linear-gradient(135deg, rgba(255,90,0,0.10) 0%, rgba(255,90,0,0.03) 100%)',
           border: '1.5px solid rgba(255,90,0,0.12)',
-          top: -16,
+          top: -12,
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 1,
@@ -148,7 +196,10 @@ function HeroCarouselDeck() {
       />
 
       {/* Card stack */}
-      <div className="relative" style={{ width: CARD_W, height: CARD_H, marginTop: 16 }}>
+      <div
+        className="relative cursor-grab active:cursor-grabbing select-none"
+        style={{ width: CARD_W, height: CARD_H, marginTop: 12, touchAction: 'pan-y' }}
+      >
         {carousel.slides.map((src, idx) => (
           <div
             key={idx}
@@ -157,7 +208,7 @@ function HeroCarouselDeck() {
               position: 'absolute',
               width: CARD_W,
               height: CARD_H,
-              borderRadius: 18,
+              borderRadius: isMobile ? 14 : 18,
               overflow: 'hidden',
               transition: 'transform 0.42s cubic-bezier(0.34,1.4,0.64,1), opacity 0.4s ease, box-shadow 0.4s ease',
               cursor: idx === activeSlide ? 'default' : 'pointer',
@@ -182,10 +233,10 @@ function HeroCarouselDeck() {
       </div>
 
       {/* Controls row */}
-      <div className="flex items-center gap-5 mt-12 relative z-20">
+      <div className="flex items-center gap-4 sm:gap-5 mt-8 sm:mt-12 relative z-20">
         <button
           onClick={() => { prev(); resetAuto(); }}
-          className="w-9 h-9 rounded-full bg-white border border-[rgba(17,17,17,0.12)] shadow-sm flex items-center justify-center hover:border-[rgba(17,17,17,0.25)] hover:shadow-md transition-all"
+          className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white border border-[rgba(17,17,17,0.12)] shadow-sm flex items-center justify-center hover:border-[rgba(17,17,17,0.25)] hover:shadow-md transition-all active:scale-95"
           aria-label="Previous slide"
         >
           <ChevronLeft size={16} className="text-[#111111]" />
@@ -199,7 +250,7 @@ function HeroCarouselDeck() {
               onClick={() => { goTo(idx); resetAuto(); }}
               aria-label={`Go to slide ${idx + 1}`}
               style={{
-                width: idx === activeSlide ? 22 : 6,
+                width: idx === activeSlide ? (isMobile ? 18 : 22) : 6,
                 height: 6,
                 borderRadius: 3,
                 background: idx === activeSlide ? '#FF5A00' : 'rgba(17,17,17,0.16)',
@@ -214,7 +265,7 @@ function HeroCarouselDeck() {
 
         <button
           onClick={() => { next(); resetAuto(); }}
-          className="w-9 h-9 rounded-full bg-white border border-[rgba(17,17,17,0.12)] shadow-sm flex items-center justify-center hover:border-[rgba(17,17,17,0.25)] hover:shadow-md transition-all"
+          className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white border border-[rgba(17,17,17,0.12)] shadow-sm flex items-center justify-center hover:border-[rgba(17,17,17,0.25)] hover:shadow-md transition-all active:scale-95"
           aria-label="Next slide"
         >
           <ChevronRight size={16} className="text-[#111111]" />
@@ -222,11 +273,11 @@ function HeroCarouselDeck() {
       </div>
 
       {/* Counter + title */}
-      <div className="flex items-center gap-2 mt-4">
+      <div className="flex items-center gap-2 mt-3 sm:mt-4">
         <span className="text-[12px] font-semibold text-[#FF5A00]">
           {String(activeSlide + 1).padStart(2, '0')}
         </span>
-        <div className="w-20 h-px bg-[rgba(17,17,17,0.12)] relative overflow-hidden rounded">
+        <div className="w-16 sm:w-20 h-px bg-[rgba(17,17,17,0.12)] relative overflow-hidden rounded">
           <div
             className="absolute top-0 left-0 h-full bg-[#FF5A00] rounded transition-all duration-300"
             style={{ width: `${((activeSlide + 1) / carousel.slides.length) * 100}%` }}
@@ -239,7 +290,7 @@ function HeroCarouselDeck() {
 
       {/* Author badge */}
       <div
-        className="absolute top-0 right-[-12px] flex items-center gap-1.5 rounded-full px-3 py-1.5 shadow-sm"
+        className="absolute -top-2 right-1 sm:right-[-6px] lg:right-[-12px] flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-1 sm:py-1.5 shadow-sm pointer-events-none"
         style={{
           background: 'rgba(255,255,255,0.95)',
           border: '1px solid rgba(17,17,17,0.08)',
@@ -795,37 +846,37 @@ export default function HomePage() {
       <Navbar />
 
       {/* Hero */}
-      <section className="pt-[64px]">
+      <section className="pt-[64px] overflow-x-clip">
         <div className="container-wide">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center min-h-[calc(100svh-64px)] py-12 lg:py-16">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center min-h-[calc(100svh-64px)] py-6 sm:py-12 lg:py-16">
             {/* Left copy */}
             <div>
-              <div className="animate-on-scroll mb-4 md:mb-6">
+              <div className="animate-on-scroll mb-3 md:mb-6">
                 <span className="text-eyebrow">The carousel workspace</span>
               </div>
-              <h1 className="text-hero mb-6 md:mb-8 animate-on-scroll animate-on-scroll-delay-1">
+              <h1 className="text-hero mb-4 md:mb-8 animate-on-scroll animate-on-scroll-delay-1">
                 Make carousels<br />worth swiping.
               </h1>
-              <p className="text-[17px] sm:text-[20px] text-[#6B6B67] leading-relaxed mb-3 max-w-lg animate-on-scroll animate-on-scroll-delay-2">
+              <p className="text-[16px] sm:text-[20px] text-[#6B6B67] leading-relaxed mb-2 md:mb-3 max-w-lg animate-on-scroll animate-on-scroll-delay-2">
                 Start with a proven structure. Swap the content. Make it yours.
               </p>
-              <p className="text-[15px] sm:text-[17px] text-[#6B6B67] leading-relaxed mb-8 md:mb-10 max-w-lg animate-on-scroll animate-on-scroll-delay-2">
+              <p className="text-[14px] sm:text-[17px] text-[#6B6B67] leading-relaxed mb-6 md:mb-10 max-w-lg animate-on-scroll animate-on-scroll-delay-2">
                 Professionally structured carousel templates and a powerful canvas to turn them into
                 your own content in minutes.
               </p>
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 animate-on-scroll animate-on-scroll-delay-3">
-                <Link to="/pricing" className="btn-accent flex items-center justify-center gap-2 !px-6 sm:!px-7 !py-4 text-[16px] w-full sm:w-auto">
+              <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-4 animate-on-scroll animate-on-scroll-delay-3">
+                <Link to="/pricing" className="btn-accent flex items-center justify-center gap-2 !px-5 sm:!px-7 !py-3.5 sm:!py-4 text-[15px] sm:text-[16px] w-full sm:w-auto">
                   Create your first carousel
                   <ArrowRight size={17} />
                 </Link>
-                <Link to="/templates" className="btn-ghost flex items-center justify-center gap-2 !px-6 sm:!px-7 !py-4 text-[16px] w-full sm:w-auto">
+                <Link to="/templates" className="btn-ghost flex items-center justify-center gap-2 !px-5 sm:!px-7 !py-3.5 sm:!py-4 text-[15px] sm:text-[16px] w-full sm:w-auto">
                   Explore templates
                 </Link>
               </div>
             </div>
 
-            {/* Right: real carousel deck — only on lg+ */}
-            <div className="hidden lg:flex items-center justify-center animate-on-scroll animate-on-scroll-delay-2">
+            {/* Right: real carousel deck — interactive 3D stacked deck on all screen sizes */}
+            <div className="flex items-center justify-center w-full mt-6 lg:mt-0 max-w-full overflow-hidden animate-on-scroll animate-on-scroll-delay-2">
               <HeroCarouselDeck />
             </div>
           </div>

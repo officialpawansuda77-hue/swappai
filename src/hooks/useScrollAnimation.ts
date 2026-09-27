@@ -26,6 +26,16 @@ export function useIntersectionObserver(
 
 export function useScrollAnimation() {
   useEffect(() => {
+    const selector = '.animate-on-scroll';
+    const elements = document.querySelectorAll(selector);
+
+    if (typeof window === 'undefined') return;
+
+    if (!('IntersectionObserver' in window)) {
+      elements.forEach(el => el.classList.add('visible'));
+      return;
+    }
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach(entry => {
@@ -34,11 +44,18 @@ export function useScrollAnimation() {
           }
         });
       },
-      { threshold: 0.08, rootMargin: '0px 0px -60px 0px' }
+      { threshold: 0.02, rootMargin: '120px 0px 120px 0px' }
     );
 
-    const elements = document.querySelectorAll('.animate-on-scroll');
-    elements.forEach(el => observer.observe(el));
+    elements.forEach(el => {
+      // Immediately reveal elements already near or within the viewport (especially Hero)
+      const rect = el.getBoundingClientRect();
+      if (rect.top < window.innerHeight + 100 && rect.bottom > -100) {
+        el.classList.add('visible');
+      } else {
+        observer.observe(el);
+      }
+    });
 
     return () => observer.disconnect();
   }, []);
