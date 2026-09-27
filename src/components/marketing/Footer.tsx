@@ -4,11 +4,11 @@ import { Instagram, Twitter, Linkedin } from 'lucide-react';
 export default function Footer() {
   return (
     <footer className="bg-[#11100E] text-[#F7F5F0]">
-      <div className="container-wide py-20">
+      <div className="container-wide py-12 md:py-20">
         {/* Top */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-12 pb-16 border-b border-[rgba(255,255,255,0.08)]">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-8 md:gap-12 pb-10 md:pb-16 border-b border-[rgba(255,255,255,0.08)]">
           {/* Brand */}
-          <div className="md:col-span-2">
+          <div className="col-span-2 md:col-span-2">
             <Link to="/" className="flex items-center gap-1 no-underline mb-4">
               <span className="text-[22px] font-black tracking-[-0.04em] text-[#F7F5F0]" style={{ fontFamily: 'Manrope, Inter, sans-serif' }}>swapp</span>
               <span className="text-[22px] font-black tracking-[-0.04em] text-[#FF5A00]" style={{ fontFamily: 'Manrope, Inter, sans-serif' }}>.ai</span>

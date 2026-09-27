@@ -649,6 +649,8 @@ export default function EditorPage() {
 
   // Active Tool Panel
   const [activeTool, setActiveTool] = useState<'text' | 'uploads' | 'shapes' | 'elements' | 'background' | 'brandKit' | 'slides'>('text');
+  // Mobile bottom sheet state
+  const [mobileSheet, setMobileSheet] = useState<string | null>(null);
 
   // Initialize project
   useEffect(() => {
@@ -801,31 +803,31 @@ export default function EditorPage() {
   ];
 
   return (
-    <div className="flex flex-col h-screen bg-[#11100E] overflow-hidden">
+    <div className="flex flex-col h-[100dvh] bg-[#11100E] overflow-hidden">
       {/* ── TOP TOOLBAR ─────────────────────────────────── */}
-      <div className="editor-toolbar h-[52px] bg-[#141311] border-b border-[rgba(255,255,255,0.06)] flex items-center justify-between px-4 flex-shrink-0 gap-4">
-        <div className="flex items-center gap-3">
+      <div className="editor-toolbar h-[52px] bg-[#141311] border-b border-[rgba(255,255,255,0.06)] flex items-center justify-between px-3 md:px-4 flex-shrink-0 gap-2 md:gap-4">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0">
           <Link
             to="/dashboard"
-            className="p-1.5 rounded-lg text-[rgba(247,245,240,0.6)] hover:text-white hover:bg-[rgba(255,255,255,0.06)] transition-colors"
+            className="p-2 rounded-lg text-[rgba(247,245,240,0.6)] hover:text-white hover:bg-[rgba(255,255,255,0.06)] transition-colors flex-shrink-0 min-w-[36px] min-h-[36px] flex items-center justify-center"
             title="Back to Dashboard"
           >
             <ArrowLeft size={16} />
           </Link>
-          <div className="w-px h-5 bg-[rgba(255,255,255,0.08)]" />
+          <div className="w-px h-5 bg-[rgba(255,255,255,0.08)] hidden md:block" />
           <input
             type="text"
             value={project.name}
             onChange={e => editor.setProject({ ...project, name: e.target.value })}
-            className="bg-transparent text-[13px] font-medium text-[rgba(247,245,240,0.9)] outline-none max-w-[240px] border-b border-transparent focus:border-[rgba(255,255,255,0.2)] px-1"
+            className="bg-transparent text-[13px] font-medium text-[rgba(247,245,240,0.9)] outline-none hidden md:block md:max-w-[200px] lg:max-w-[240px] border-b border-transparent focus:border-[rgba(255,255,255,0.2)] px-1"
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 md:gap-2">
           <button
             onClick={editor.undo}
             disabled={!editor.canUndo}
-            className="p-2 rounded-lg text-[rgba(247,245,240,0.5)] hover:text-white hover:bg-[rgba(255,255,255,0.06)] transition-all disabled:opacity-30"
+            className="p-2 rounded-lg text-[rgba(247,245,240,0.5)] hover:text-white hover:bg-[rgba(255,255,255,0.06)] transition-all disabled:opacity-30 hidden md:flex"
             title="Undo (⌘Z)"
           >
             <Undo2 size={15} />
@@ -833,12 +835,12 @@ export default function EditorPage() {
           <button
             onClick={editor.redo}
             disabled={!editor.canRedo}
-            className="p-2 rounded-lg text-[rgba(247,245,240,0.5)] hover:text-white hover:bg-[rgba(255,255,255,0.06)] transition-all disabled:opacity-30"
+            className="p-2 rounded-lg text-[rgba(247,245,240,0.5)] hover:text-white hover:bg-[rgba(255,255,255,0.06)] transition-all disabled:opacity-30 hidden md:flex"
             title="Redo (⌘⇧Z)"
           >
             <Redo2 size={15} />
           </button>
-          <div className="w-px h-5 bg-[rgba(255,255,255,0.08)]" />
+          <div className="w-px h-5 bg-[rgba(255,255,255,0.08)] hidden md:block" />
           <button
             onClick={editor.togglePreviewMode}
             className={`p-2 rounded-lg transition-all ${
@@ -852,8 +854,8 @@ export default function EditorPage() {
           </button>
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className={`text-[11px] uppercase tracking-wider font-semibold ${
+        <div className="flex items-center gap-2 md:gap-3">
+          <span className={`text-[10px] md:text-[11px] uppercase tracking-wider font-semibold hidden sm:block ${
             editor.state.saveStatus === 'saved' ? 'text-[rgba(247,245,240,0.35)]' :
             editor.state.saveStatus === 'saving' ? 'text-[#FF5A00]' : 'text-[rgba(247,245,240,0.5)]'
           }`}>
@@ -861,26 +863,26 @@ export default function EditorPage() {
           </span>
           <button
             onClick={() => { doSave(); toast('Project saved'); }}
-            className="p-1.5 px-3 rounded-lg border border-[rgba(255,255,255,0.12)] text-[rgba(247,245,240,0.85)] hover:text-white hover:border-white transition-all flex items-center gap-1.5 text-[12px] font-medium"
+            className="p-1.5 md:px-3 rounded-lg border border-[rgba(255,255,255,0.12)] text-[rgba(247,245,240,0.85)] hover:text-white hover:border-white transition-all flex items-center gap-1.5 text-[12px] font-medium min-w-[36px] min-h-[36px] justify-center"
             title="Save project"
           >
             <Save size={13} />
-            <span>Save</span>
+            <span className="hidden sm:inline">Save</span>
           </button>
           <button
             onClick={() => setShowExport(true)}
-            className="py-1.5 px-3.5 rounded-lg bg-[#FF5A00] hover:bg-[#e04f00] text-white font-semibold text-[12px] flex items-center gap-1.5 shadow-md shadow-[#FF5A00]/25 transition-all"
+            className="py-1.5 px-2.5 md:px-3.5 rounded-lg bg-[#FF5A00] hover:bg-[#e04f00] text-white font-semibold text-[12px] flex items-center gap-1.5 shadow-md shadow-[#FF5A00]/25 transition-all min-h-[36px]"
           >
             <Download size={13} />
-            Export
+            <span className="hidden sm:inline">Export</span>
           </button>
         </div>
       </div>
 
       {/* ── MAIN WORKSPACE ───────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden">
-        {/* ── FAR-LEFT ICON RAIL (68px) ── */}
-        <div className="w-[68px] bg-[#141311] border-r border-[rgba(255,255,255,0.06)] flex flex-col items-center py-3 gap-1 flex-shrink-0 z-20">
+        {/* ── FAR-LEFT ICON RAIL (68px) — Desktop only ── */}
+        <div className="hidden md:flex w-[68px] bg-[#141311] border-r border-[rgba(255,255,255,0.06)] flex-col items-center py-3 gap-1 flex-shrink-0 z-20">
           {toolTabs.map(tool => {
             const Icon = tool.icon;
             const isActive = activeTool === tool.id;
@@ -902,8 +904,8 @@ export default function EditorPage() {
           })}
         </div>
 
-        {/* ── ACTIVE TOOL DRAWER (260px) ── */}
-        <div className="w-[260px] bg-[#181714] border-r border-[rgba(255,255,255,0.06)] flex flex-col flex-shrink-0 z-10 overflow-hidden">
+        {/* ── ACTIVE TOOL DRAWER (260px) — Desktop only ── */}
+        <div className="hidden md:flex w-[260px] bg-[#181714] border-r border-[rgba(255,255,255,0.06)] flex-col flex-shrink-0 z-10 overflow-hidden">
           {activeTool === 'text' && currentSlide && (
             <TextPanel
               onAddElement={(el) => {
@@ -1038,13 +1040,13 @@ export default function EditorPage() {
 
         {/* ── CANVAS CENTER ──────────────────────────────── */}
         <div
-          className="flex-1 flex items-center justify-center overflow-auto bg-[#0D0C0B]"
+          className="flex-1 flex items-start md:items-center justify-center overflow-auto bg-[#0D0C0B] pt-4 md:pt-0"
           onClick={(e) => {
             if (e.currentTarget === e.target) editor.setSelectedElement(null);
           }}
         >
           {currentSlide && (
-            <div className="flex flex-col items-center gap-3 my-4">
+            <div className="flex flex-col items-center gap-3 my-2 md:my-4 w-full px-3 md:px-0 md:w-auto">
               {/* Slide nav */}
               <div className="flex items-center gap-3">
                 <button
@@ -1066,35 +1068,39 @@ export default function EditorPage() {
                 </button>
               </div>
 
-              {/* Canvas viewport */}
+              {/* Canvas viewport — responsive scaling */}
               <div
-                className="shadow-[0_20px_50px_rgba(0,0,0,0.6)] border border-[rgba(255,255,255,0.08)]"
-                style={{ borderRadius: 16, overflow: 'hidden' }}
+                className="shadow-[0_20px_50px_rgba(0,0,0,0.6)] border border-[rgba(255,255,255,0.08)] w-full md:w-auto"
+                style={{ borderRadius: 12, overflow: 'hidden', maxWidth: currentSlide.width * canvasScale }}
               >
                 {editor.state.isPreviewMode ? (
-                  <SlidePreview slide={currentSlide} scale={canvasScale} />
+                  <div style={{ width: '100%', aspectRatio: `${currentSlide.width}/${currentSlide.height}`, position: 'relative', overflow: 'hidden' }}>
+                    <SlidePreview slide={currentSlide} scale={canvasScale} />
+                  </div>
                 ) : (
-                  <CanvasView
-                    slide={currentSlide}
-                    selectedElementId={editor.state.selectedElementId}
-                    onSelectElement={editor.setSelectedElement}
-                    onUpdateElement={(elId, updates) => editor.updateElement(editor.state.currentSlideIndex, elId, updates)}
-                    scale={canvasScale}
-                  />
+                  <div style={{ width: '100%', aspectRatio: `${currentSlide.width}/${currentSlide.height}`, position: 'relative', overflow: 'hidden' }}>
+                    <CanvasView
+                      slide={currentSlide}
+                      selectedElementId={editor.state.selectedElementId}
+                      onSelectElement={editor.setSelectedElement}
+                      onUpdateElement={(elId, updates) => editor.updateElement(editor.state.currentSlideIndex, elId, updates)}
+                      scale={canvasScale}
+                    />
+                  </div>
                 )}
               </div>
 
               <div className="flex items-center gap-2 text-[11px] text-[rgba(247,245,240,0.35)]">
-                <span>{currentSlide.width} × {currentSlide.height}px</span>
-                <span>•</span>
+                <span className="hidden md:inline">{currentSlide.width} × {currentSlide.height}px</span>
+                <span className="hidden md:inline">•</span>
                 <span>4:5 Portrait Carousel</span>
               </div>
             </div>
           )}
         </div>
 
-        {/* ── RIGHT PROPERTIES PANEL ──────────────────────── */}
-        <div className="w-[240px] bg-[#141311] border-l border-[rgba(255,255,255,0.06)] flex-shrink-0 overflow-y-auto">
+        {/* ── RIGHT PROPERTIES PANEL — Desktop only ──────── */}
+        <div className="hidden md:block w-[240px] bg-[#141311] border-l border-[rgba(255,255,255,0.06)] flex-shrink-0 overflow-y-auto">
           <PropertiesPanel
             element={editor.selectedElement}
             onUpdate={(updates) => {
@@ -1124,6 +1130,166 @@ export default function EditorPage() {
         </div>
       </div>
 
+      {/* ── MOBILE BOTTOM TOOLBAR ─────────────────────────── */}
+      <div className="editor-bottom-nav md:hidden flex items-center justify-around py-1" style={{ paddingBottom: 'max(4px, env(safe-area-inset-bottom, 0px))' }}>
+        {toolTabs.slice(0, 6).map(tool => {
+          const Icon = tool.icon;
+          const isActive = mobileSheet === tool.id;
+          return (
+            <button
+              key={tool.id}
+              onClick={() => setMobileSheet(prev => prev === tool.id ? null : tool.id)}
+              className={`flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl transition-all min-w-[48px] min-h-[48px] justify-center ${
+                isActive
+                  ? 'text-[#FF5A00]'
+                  : 'text-[rgba(247,245,240,0.45)]'
+              }`}
+            >
+              <Icon size={19} />
+              <span className="text-[9px] font-medium leading-none">{tool.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── MOBILE BOTTOM SHEET ───────────────────────────── */}
+      {mobileSheet && (
+        <>
+          <div
+            className="bottom-sheet-overlay md:hidden"
+            onClick={() => setMobileSheet(null)}
+          />
+          <div className="bottom-sheet md:hidden">
+            <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-[rgba(255,255,255,0.08)]">
+              <span className="text-[13px] font-bold text-[rgba(247,245,240,0.9)] capitalize">{mobileSheet.replace('brandKit', 'Brand Kit')}</span>
+              <button
+                onClick={() => setMobileSheet(null)}
+                className="p-2 rounded-lg text-[rgba(247,245,240,0.5)] hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="overflow-y-auto max-h-[55vh]">
+              {mobileSheet === 'text' && currentSlide && (
+                <TextPanel
+                  onAddElement={(el) => {
+                    editor.addElement(editor.state.currentSlideIndex, el);
+                    editor.setSelectedElement(el.id);
+                    setMobileSheet(null);
+                  }}
+                  onToast={toast}
+                  isDarkBackground={true}
+                />
+              )}
+              {mobileSheet === 'uploads' && (
+                <UploadsPanel
+                  onAddElement={(el) => {
+                    editor.addElement(editor.state.currentSlideIndex, el);
+                    editor.setSelectedElement(el.id);
+                    setMobileSheet(null);
+                  }}
+                  onSetBackground={(bg) => {
+                    editor.updateSlideBackground(editor.state.currentSlideIndex, bg);
+                    setMobileSheet(null);
+                  }}
+                  onToast={toast}
+                />
+              )}
+              {mobileSheet === 'shapes' && (
+                <ShapesPanel
+                  onAddElement={(el) => {
+                    editor.addElement(editor.state.currentSlideIndex, el);
+                    editor.setSelectedElement(el.id);
+                    setMobileSheet(null);
+                  }}
+                  onToast={toast}
+                />
+              )}
+              {mobileSheet === 'elements' && (
+                <ElementsPanel
+                  onAddElement={(el) => {
+                    editor.addElement(editor.state.currentSlideIndex, el);
+                    editor.setSelectedElement(el.id);
+                    setMobileSheet(null);
+                  }}
+                  onToast={toast}
+                />
+              )}
+              {mobileSheet === 'background' && currentSlide && (
+                <BackgroundPanel
+                  currentBackground={currentSlide.background}
+                  onSetBackground={(bg) => {
+                    editor.updateSlideBackground(editor.state.currentSlideIndex, bg);
+                  }}
+                  onApplyToAllSlides={(bg) => {
+                    editor.updateAllSlidesBackground(bg);
+                  }}
+                  onToast={toast}
+                />
+              )}
+              {mobileSheet === 'brandKit' && (
+                <BrandKitPanel
+                  onSetBackground={(bg) => {
+                    editor.updateSlideBackground(editor.state.currentSlideIndex, bg);
+                  }}
+                  onApplyToAllSlides={(bg) => {
+                    editor.updateAllSlidesBackground(bg);
+                  }}
+                  onAddElement={(el) => {
+                    editor.addElement(editor.state.currentSlideIndex, el);
+                    editor.setSelectedElement(el.id);
+                    setMobileSheet(null);
+                  }}
+                  onToast={toast}
+                />
+              )}
+              {mobileSheet === 'slides' && (
+                <div className="p-3 text-[#F7F5F0]">
+                  <div className="grid grid-cols-3 gap-2 mb-3">
+                    {project.slides.map((slide, i) => (
+                      <div
+                        key={slide.id}
+                        onClick={() => { editor.setCurrentSlide(i); setMobileSheet(null); }}
+                        className={`relative rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
+                          i === editor.state.currentSlideIndex ? 'border-[#FF5A00] ring-2 ring-[#FF5A00]/40' : 'border-transparent hover:border-[rgba(255,255,255,0.2)]'
+                        }`}
+                        style={{ aspectRatio: '4/5' }}
+                      >
+                        <SlidePreview slide={slide} scale={0.11} />
+                        <div className="absolute top-1 left-1 bg-black/70 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                          {i + 1}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 pt-2 border-t border-[rgba(255,255,255,0.06)]">
+                    <button
+                      onClick={() => editor.addSlide(editor.state.currentSlideIndex)}
+                      className="flex-1 py-2.5 rounded-lg text-[12px] font-semibold text-white bg-[rgba(255,255,255,0.06)] flex items-center justify-center gap-1"
+                    >
+                      <Plus size={12} /> Add
+                    </button>
+                    <button
+                      onClick={() => editor.duplicateSlide(editor.state.currentSlideIndex)}
+                      className="flex-1 py-2.5 rounded-lg text-[12px] font-semibold text-white bg-[rgba(255,255,255,0.06)] flex items-center justify-center gap-1"
+                    >
+                      <Copy size={12} /> Dup
+                    </button>
+                    <button
+                      onClick={() => editor.deleteSlide(editor.state.currentSlideIndex)}
+                      disabled={project.slides.length <= 1}
+                      className="flex-1 py-2.5 rounded-lg text-[12px] font-semibold text-red-400 bg-[rgba(255,50,50,0.08)] flex items-center justify-center gap-1 disabled:opacity-30"
+                    >
+                      <Trash2 size={12} /> Del
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Export modal */}
       {showExport && (
         <ExportModal onClose={() => setShowExport(false)} onExport={handleExport} />
@@ -1131,7 +1297,13 @@ export default function EditorPage() {
 
       {/* Toast */}
       {showToast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#1F1E1B] border border-[#FF5A00] text-white text-[12px] font-semibold py-2 px-4 rounded-xl shadow-xl animate-fade-in flex items-center gap-2">
+        <div
+          className="fixed z-50 bg-[#1F1E1B] border border-[#FF5A00] text-white text-[12px] font-semibold py-2 px-4 rounded-xl shadow-xl animate-fade-in flex items-center gap-2"
+          style={{
+            bottom: 'max(24px, calc(env(safe-area-inset-bottom, 0px) + 80px))',
+            right: 24,
+          }}
+        >
           <div className="w-2 h-2 rounded-full bg-[#FF5A00]" />
           {showToast}
         </div>
@@ -1139,3 +1311,4 @@ export default function EditorPage() {
     </div>
   );
 }
+

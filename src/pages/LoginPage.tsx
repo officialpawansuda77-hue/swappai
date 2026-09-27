@@ -113,7 +113,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#F7F5F0] text-[#111111] flex flex-col justify-between selection:bg-[#FF5A00] selection:text-white">
       <Navbar />
 
-      <main className="flex-1 flex items-center justify-center px-4 py-20 pt-28">
+      <main className="flex-1 flex items-start md:items-center justify-center px-4 py-12 md:py-20 pt-[80px] md:pt-28">
         <div className="w-full max-w-[440px] mx-auto text-left">
           {/* Plan Eyebrow Tag */}
           <div className="mb-3">

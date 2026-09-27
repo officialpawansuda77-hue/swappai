@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -9,6 +9,23 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
 
+  const closeMenu = useCallback(() => {
+    setMenuOpen(false);
+    document.body.classList.remove('menu-open');
+  }, []);
+
+  const toggleMenu = useCallback(() => {
+    setMenuOpen(prev => {
+      const next = !prev;
+      if (next) {
+        document.body.classList.add('menu-open');
+      } else {
+        document.body.classList.remove('menu-open');
+      }
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -16,8 +33,22 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    setMenuOpen(false);
-  }, [location]);
+    closeMenu();
+  }, [location, closeMenu]);
+
+  // ESC key to close menu
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && menuOpen) closeMenu();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [menuOpen, closeMenu]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => document.body.classList.remove('menu-open');
+  }, []);
 
   const navLinks = [
     { label: 'Templates', to: '/templates' },
@@ -106,9 +137,10 @@ export default function Navbar() {
                 <ArrowRight size={13} strokeWidth={2.5} />
               </Link>
               <button
-                onClick={() => setMenuOpen(!menuOpen)}
-                className="p-2 rounded-lg hover:bg-[rgba(17,17,17,0.06)] transition-colors"
-                aria-label="Toggle menu"
+                onClick={toggleMenu}
+                className="p-2 rounded-lg hover:bg-[rgba(17,17,17,0.06)] transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+                aria-expanded={menuOpen}
               >
                 {menuOpen ? <X size={20} /> : <Menu size={20} />}
               </button>
@@ -117,59 +149,67 @@ export default function Navbar() {
         </div>
       </header>
 
-      {/* Mobile menu */}
+      {/* Mobile menu overlay */}
       {menuOpen && (
-        <div className="fixed inset-0 z-40 bg-[#F7F5F0] pt-[64px] md:hidden">
-          <div className="container-wide py-8 flex flex-col gap-1">
-            {navLinks.map(link => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className="py-4 text-[18px] font-medium text-[#111111] border-b border-[rgba(17,17,17,0.08)] no-underline hover:text-[#FF5A00] transition-colors"
-                onClick={() => setMenuOpen(false)}
-              >
-                {link.label}
-              </Link>
-            ))}
+        <div
+          className="mobile-menu-overlay fixed inset-0 z-40 bg-[#F7F5F0] md:hidden"
+          style={{ top: 64, paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation menu"
+        >
+          <div className="container-wide py-6 flex flex-col h-full">
+            <nav className="flex flex-col gap-0">
+              {navLinks.map(link => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className="py-4 text-[18px] font-semibold text-[#111111] border-b border-[rgba(17,17,17,0.08)] no-underline active:text-[#FF5A00] transition-colors flex items-center"
+                  onClick={closeMenu}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
             <div className="mt-6 flex flex-col gap-3">
               {user ? (
                 <>
                   <Link
                     to="/dashboard"
                     className="btn-ghost w-full text-center justify-center"
-                    onClick={() => setMenuOpen(false)}
+                    onClick={closeMenu}
                   >
                     Dashboard
                   </Link>
-                  <button
-                    onClick={() => { signOut(); setMenuOpen(false); }}
-                    className="py-2.5 text-[14px] text-[#6B6B67] hover:text-[#111111] text-center bg-transparent border-none cursor-pointer"
-                  >
-                    Log out
-                  </button>
                   <Link
                     to="/create"
-                    className="btn-primary w-full text-center justify-center"
-                    onClick={() => setMenuOpen(false)}
+                    className="btn-accent w-full text-center justify-center"
+                    onClick={closeMenu}
                   >
                     Create carousel →
                   </Link>
+                  <button
+                    onClick={() => { signOut(); closeMenu(); }}
+                    className="py-3 text-[14px] text-[#6B6B67] text-center bg-transparent border-none cursor-pointer min-h-[44px]"
+                  >
+                    Log out
+                  </button>
                 </>
               ) : (
                 <>
                   <Link
-                    to="/login"
-                    className="btn-ghost w-full text-center justify-center"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    Log in
-                  </Link>
-                  <Link
                     to="/pricing"
-                    className="btn-primary w-full text-center justify-center"
-                    onClick={() => setMenuOpen(false)}
+                    className="btn-accent w-full text-center justify-center"
+                    onClick={closeMenu}
                   >
                     Create carousel →
+                  </Link>
+                  <Link
+                    to="/login"
+                    className="btn-ghost w-full text-center justify-center"
+                    onClick={closeMenu}
+                  >
+                    Log in
                   </Link>
                 </>
               )}

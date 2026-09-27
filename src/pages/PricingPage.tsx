@@ -33,7 +33,7 @@ export default function PricingPage() {
     <div className="bg-[#F7F5F0] min-h-screen text-[#111111] flex flex-col justify-between selection:bg-[#FF5A00] selection:text-white">
       <Navbar />
 
-      <main className="pt-[100px] pb-24 flex-1">
+      <main className="pt-[80px] md:pt-[100px] pb-16 md:pb-24 flex-1">
         <div className="container-wide">
           {/* Hero Section */}
           <div className="text-center max-w-3xl mx-auto mb-16 md:mb-20">
@@ -49,7 +49,7 @@ export default function PricingPage() {
           </div>
 
           {/* Pricing Cards Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-[1120px] mx-auto items-stretch">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 max-w-[1120px] mx-auto items-stretch">
             {/* 1. STARTER */}
             <div className="bg-white rounded-[26px] p-8 md:p-9 border border-[rgba(17,17,17,0.08)] shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
               <div>

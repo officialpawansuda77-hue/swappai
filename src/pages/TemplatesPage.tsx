@@ -41,7 +41,7 @@ export default function TemplatesPage() {
 
       <div className="pt-[64px]">
         {/* Header */}
-        <div className="container-wide py-20">
+        <div className="container-wide py-10 md:py-20">
           <div className="animate-on-scroll mb-3">
             <span className="text-eyebrow">Template Library</span>
           </div>
@@ -68,8 +68,8 @@ export default function TemplatesPage() {
           </div>
 
           {/* Filters + Sort */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10">
-            <div className="flex gap-2 flex-wrap">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-8 md:mb-10">
+            <div className="flex gap-2 overflow-x-auto pb-1 horizontal-scroll -mx-5 px-5 sm:flex-wrap sm:overflow-visible sm:mx-0 sm:px-0">
               {CATEGORIES.map(cat => (
                 <button
                   key={cat}
@@ -93,7 +93,7 @@ export default function TemplatesPage() {
 
           {/* Grid */}
           {filtered.length === 0 ? (
-            <div className="text-center py-24">
+            <div className="text-center py-16 md:py-24">
               <p className="text-[18px] text-[#6B6B67]">No templates found.</p>
               <button onClick={() => { setSearch(''); setActiveCategory('All'); }} className="btn-ghost btn-sm mt-4">
                 Clear filters

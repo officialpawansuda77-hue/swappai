@@ -129,7 +129,7 @@ function HeroCarouselDeck() {
   return (
     <div
       className="relative flex flex-col items-center justify-start"
-      style={{ height: 540 }}
+      style={{ height: 'min(540px, 70vw + 160px)' }}
     >
       {/* Decorative ring behind active card */}
       <div
@@ -329,7 +329,7 @@ function FeaturedTemplate() {
         <div className="animate-on-scroll mb-3">
           <span className="text-eyebrow">Template showcase</span>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-16 items-center">
           <div className="animate-on-scroll">
             <h2 className="text-section mb-4">{template.name}</h2>
             <p className="text-body-lg mb-2">{template.slideCount} slides &middot; {template.category}</p>
@@ -371,8 +371,15 @@ function FeaturedTemplate() {
           </div>
 
           <div className="flex justify-center animate-on-scroll animate-on-scroll-delay-2">
-            <div className="rounded-2xl overflow-hidden shadow-2xl" style={{ width: 1080 * scale, height: 1350 * scale }}>
-              {slide && <SlidePreview slide={slide} scale={scale} />}
+            <div
+              className="rounded-2xl shadow-2xl w-full max-w-[380px] overflow-hidden"
+              style={{ aspectRatio: '1080/1350', position: 'relative' }}
+            >
+              {slide && (
+                <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: `${100 / scale}%`, height: `${100 / scale}%`, position: 'absolute', top: 0, left: 0 }}>
+                  <SlidePreview slide={slide} scale={1} />
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -463,20 +470,20 @@ function SwapConcept() {
             </div>
           </div>
 
-          <div className="flex gap-6 justify-center items-start animate-on-scroll animate-on-scroll-delay-2">
-            <div className="flex-1 flex flex-col items-center gap-3">
+          <div className="flex gap-4 sm:gap-6 justify-center items-start animate-on-scroll animate-on-scroll-delay-2">
+            <div className="flex-1 max-w-[160px] sm:max-w-[200px] flex flex-col items-center gap-3">
               <span className="text-eyebrow">Template</span>
-              <div className="rounded-xl overflow-hidden shadow-lg" style={{ width: 1080 * scale, height: 1350 * scale }}>
-                <SlidePreview slide={original.slides[0]} scale={scale} />
+              <div className="rounded-xl overflow-hidden shadow-lg w-full" style={{ aspectRatio: '1080/1350' }}>
+                <SlidePreview slide={original.slides[0]} scale={0.28} />
               </div>
             </div>
             <div className="flex items-center self-center">
               <div className="text-2xl font-black text-[#FF5A00]">&rarr;</div>
             </div>
-            <div className="flex-1 flex flex-col items-center gap-3">
+            <div className="flex-1 max-w-[160px] sm:max-w-[200px] flex flex-col items-center gap-3">
               <span className="text-eyebrow">Your version</span>
-              <div className="rounded-xl overflow-hidden shadow-lg" style={{ width: 1080 * scale, height: 1350 * scale }}>
-                <SlidePreview slide={remixed.slides[0]} scale={scale} />
+              <div className="rounded-xl overflow-hidden shadow-lg w-full" style={{ aspectRatio: '1080/1350' }}>
+                <SlidePreview slide={remixed.slides[0]} scale={0.28} />
               </div>
             </div>
           </div>
@@ -520,7 +527,8 @@ function CanvasSection() {
             </div>
           </div>
 
-          <div className="grid grid-cols-[180px_1fr_200px] min-h-[480px]">
+          {/* Desktop: 3-col editor mockup */}
+          <div className="hidden md:grid grid-cols-[180px_1fr_200px] min-h-[480px]">
             <div className="border-r border-[rgba(255,255,255,0.06)] p-3 flex flex-col gap-2">
               {['Templates', 'Text', 'Uploads', 'Elements', 'Background', 'Brand Kit'].map((tool, i) => (
                 <button
@@ -583,11 +591,58 @@ function CanvasSection() {
               ))}
             </div>
           </div>
+
+          {/* Mobile: simplified 2-row layout */}
+          <div className="md:hidden flex flex-col">
+            <div className="flex gap-1 p-2 overflow-x-auto border-b border-[rgba(255,255,255,0.06)]">
+              {['Text', 'Uploads', 'Shapes', 'Background', 'Brand Kit'].map((tool, i) => (
+                <button
+                  key={tool}
+                  className={`px-3 py-2 rounded-lg text-[11px] font-medium whitespace-nowrap ${
+                    i === 0 ? 'bg-[rgba(255,90,0,0.15)] text-[#FF5A00]' : 'text-[rgba(247,245,240,0.4)]'
+                  }`}
+                >
+                  {tool}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center justify-center py-8 px-4" style={{
+              background: '#2a2825',
+              backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px)',
+              backgroundSize: '24px 24px',
+              minHeight: 260,
+            }}>
+              <div className="rounded-xl overflow-hidden shadow-2xl" style={{ width: 160, height: 200, background: '#111111', position: 'relative' }}>
+                <div style={{ position: 'absolute', left: 12, top: 0, width: 2, height: 30, background: '#FF5A00' }} />
+                <div style={{ position: 'absolute', left: 18, top: 8, width: '70%', height: 40, background: 'rgba(247,245,240,0.9)', borderRadius: 3 }} />
+                <div style={{ position: 'absolute', left: 18, top: 56, width: '85%', height: 40, background: 'rgba(247,245,240,0.8)', borderRadius: 3 }} />
+                <div style={{ position: 'absolute', left: 18, top: 108, width: '60%', height: 10, background: 'rgba(247,245,240,0.2)', borderRadius: 2 }} />
+                <div style={{ position: 'absolute', left: 18, top: 124, width: '75%', height: 10, background: 'rgba(247,245,240,0.2)', borderRadius: 2 }} />
+                <div style={{ position: 'absolute', left: 14, top: 4, width: '74%', height: 48, border: '2px solid #FF5A00', borderRadius: 4, pointerEvents: 'none' }} />
+              </div>
+            </div>
+            <div className="p-3 border-t border-[rgba(255,255,255,0.06)]" style={{ background: '#1a1917' }}>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: 'Font', value: 'Inter' },
+                  { label: 'Size', value: '96px' },
+                  { label: 'Color', value: '#F7F5F0' },
+                  { label: 'Align', value: 'Left' },
+                ].map(prop => (
+                  <div key={prop.label} className="flex items-center justify-between py-2 border-b border-[rgba(255,255,255,0.05)]">
+                    <span className="text-[10px] text-[rgba(247,245,240,0.35)]">{prop.label}</span>
+                    <span className="text-[11px] font-medium text-[rgba(247,245,240,0.7)]">{prop.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
   );
 }
+
 
 // ---- AI REMIX ---------------------------------------------------------------
 function AIRemixSection() {
@@ -742,34 +797,34 @@ export default function HomePage() {
       {/* Hero */}
       <section className="pt-[64px]">
         <div className="container-wide">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center min-h-[calc(100vh-64px)] py-16">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center min-h-[calc(100svh-64px)] py-12 lg:py-16">
             {/* Left copy */}
             <div>
-              <div className="animate-on-scroll mb-6">
+              <div className="animate-on-scroll mb-4 md:mb-6">
                 <span className="text-eyebrow">The carousel workspace</span>
               </div>
-              <h1 className="text-hero mb-8 animate-on-scroll animate-on-scroll-delay-1">
+              <h1 className="text-hero mb-6 md:mb-8 animate-on-scroll animate-on-scroll-delay-1">
                 Make carousels<br />worth swiping.
               </h1>
-              <p className="text-[20px] text-[#6B6B67] leading-relaxed mb-4 max-w-lg animate-on-scroll animate-on-scroll-delay-2">
+              <p className="text-[17px] sm:text-[20px] text-[#6B6B67] leading-relaxed mb-3 max-w-lg animate-on-scroll animate-on-scroll-delay-2">
                 Start with a proven structure. Swap the content. Make it yours.
               </p>
-              <p className="text-[17px] text-[#6B6B67] leading-relaxed mb-10 max-w-lg animate-on-scroll animate-on-scroll-delay-2">
+              <p className="text-[15px] sm:text-[17px] text-[#6B6B67] leading-relaxed mb-8 md:mb-10 max-w-lg animate-on-scroll animate-on-scroll-delay-2">
                 Professionally structured carousel templates and a powerful canvas to turn them into
                 your own content in minutes.
               </p>
-              <div className="flex flex-wrap gap-4 animate-on-scroll animate-on-scroll-delay-3">
-                <Link to="/pricing" className="btn-accent flex items-center gap-2 !px-7 !py-4 text-[16px]">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 animate-on-scroll animate-on-scroll-delay-3">
+                <Link to="/pricing" className="btn-accent flex items-center justify-center gap-2 !px-6 sm:!px-7 !py-4 text-[16px] w-full sm:w-auto">
                   Create your first carousel
                   <ArrowRight size={17} />
                 </Link>
-                <Link to="/templates" className="btn-ghost flex items-center gap-2 !px-7 !py-4 text-[16px]">
+                <Link to="/templates" className="btn-ghost flex items-center justify-center gap-2 !px-6 sm:!px-7 !py-4 text-[16px] w-full sm:w-auto">
                   Explore templates
                 </Link>
               </div>
             </div>
 
-            {/* Right: real carousel deck */}
+            {/* Right: real carousel deck — only on lg+ */}
             <div className="hidden lg:flex items-center justify-center animate-on-scroll animate-on-scroll-delay-2">
               <HeroCarouselDeck />
             </div>
