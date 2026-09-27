@@ -84,6 +84,11 @@ export default function Footer() {
                   Contact Support
                 </a>
               </li>
+              <li>
+                <Link to="/admin" className="text-[14px] text-[rgba(247,245,240,0.55)] hover:text-[#FF5A00] transition-colors no-underline">
+                  Admin Panel
+                </Link>
+              </li>
             </ul>
           </div>
 

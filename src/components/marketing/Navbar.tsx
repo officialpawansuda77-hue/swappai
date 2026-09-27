@@ -4,7 +4,9 @@ import { Menu, X, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function Navbar() {
-  const { user, signOut } = useAuth();
+  const { user, isAdmin, signOut } = useAuth();
+  const hasLocalAdmin = typeof window !== 'undefined' && !!localStorage.getItem('swapp_admin_session');
+  const isEffectiveAdmin = isAdmin || hasLocalAdmin;
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
@@ -101,6 +103,14 @@ export default function Navbar() {
 
             {/* Desktop CTA */}
             <div className="hidden md:flex items-center gap-3">
+              {isEffectiveAdmin && (
+                <Link
+                  to="/admin"
+                  className="text-[12.5px] font-bold text-[#FF5A00] bg-[rgba(255,90,0,0.1)] hover:bg-[rgba(255,90,0,0.18)] px-2.5 py-1 rounded-lg transition-colors border border-[rgba(255,90,0,0.2)] no-underline"
+                >
+                  Admin Panel
+                </Link>
+              )}
               {user ? (
                 <>
                   <Link to="/dashboard" className="nav-link font-medium">
@@ -172,6 +182,16 @@ export default function Navbar() {
               ))}
             </nav>
             <div className="mt-6 flex flex-col gap-3">
+              {isEffectiveAdmin && (
+                <Link
+                  to="/admin"
+                  className="py-3 px-4 rounded-xl bg-[rgba(255,90,0,0.1)] text-[#FF5A00] font-bold text-[15px] flex items-center justify-between no-underline"
+                  onClick={closeMenu}
+                >
+                  <span>Admin Panel</span>
+                  <ArrowRight size={16} />
+                </Link>
+              )}
               {user ? (
                 <>
                   <Link

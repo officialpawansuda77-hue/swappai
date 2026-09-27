@@ -301,6 +301,12 @@ export default function LoginPage() {
               <ShieldCheck size={14} className="text-emerald-600" />
               <span>Protected with Supabase Auth & Row Level Security</span>
             </p>
+
+            <div className="pt-2 border-t border-[rgba(17,17,17,0.06)]">
+              <Link to="/admin" className="text-[12px] text-[#6B6B67] hover:text-[#FF5A00] transition-colors">
+                Admin & Studio Portal →
+              </Link>
+            </div>
           </div>
         </div>
       </main>
