@@ -11,6 +11,7 @@ import { SlideModal } from '../components/admin/AdminUI';
 import { createTemplateDraft, publishTemplate, uploadSlideImage } from '../lib/adminApi';
 import { createSlideUploadItems, WIZARD_STEPS, WizardStep, parseTags, formatFileSize } from '../lib/adminUtils';
 import { SlideUploadItem, TemplateFormData, TemplateCategory, TemplateSourceType } from '../types';
+import { deconstructSlideImage } from '../lib/deconstructSlide';
 import { useAuth } from '../contexts/AuthContext';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -55,7 +56,7 @@ function StepProgress({ current }: { current: number }) {
 
 // ---- SLIDE UPLOAD CARD ------------------------------------------------------
 function SlideCard({
-  item, index, total, onRemove, onReplace, onPreview,
+  item, index, total, onRemove, onReplace, onPreview, onDeconstruct,
 }: {
   item: SlideUploadItem;
   index: number;
@@ -63,6 +64,7 @@ function SlideCard({
   onRemove: (id: string) => void;
   onReplace: (id: string, file: File) => void;
   onPreview: (index: number) => void;
+  onDeconstruct?: (id: string) => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -82,7 +84,7 @@ function SlideCard({
   };
 
   return (
-    <div className="relative group bg-[#1a1917] border border-[rgba(255,255,255,0.06)] rounded-xl overflow-hidden" style={{ aspectRatio: '4/5' }}>
+    <div className="relative group bg-[#1a1917] border border-[rgba(255,255,255,0.06)] rounded-xl overflow-hidden shadow-sm" style={{ aspectRatio: '4/5' }}>
       {/* Image */}
       <img
         src={item.previewDataUrl}
@@ -91,29 +93,58 @@ function SlideCard({
         onClick={() => onPreview(index)}
       />
 
+      {/* AI Layer status badge (top right) */}
+      {item.deconstructStatus === 'done' && (
+        <div className="absolute top-1.5 right-1.5 bg-emerald-500/90 text-white text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 shadow-md z-10">
+          <span>✨</span>
+          <span>{item.elements?.length || 0} Layers</span>
+        </div>
+      )}
+      {item.deconstructStatus === 'deconstructing' && (
+        <div className="absolute top-1.5 right-1.5 bg-[#FF5A00] text-white text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 animate-pulse shadow-md z-10">
+          <RefreshCw size={9} className="animate-spin" />
+          <span>AI...</span>
+        </div>
+      )}
+
       {/* Overlay on hover */}
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all flex flex-col items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 p-2 z-20">
+        <button
+          onClick={() => onPreview(index)}
+          className="w-full bg-white/90 text-[#111] text-[10px] font-semibold py-1 rounded hover:bg-white transition-colors"
+        >
+          Preview
+        </button>
+        {onDeconstruct && (
+          <button
+            onClick={() => onDeconstruct(item.localId)}
+            className="w-full bg-[#FF5A00] text-white text-[10px] font-semibold py-1 rounded hover:bg-[#FF6A1A] transition-colors flex items-center justify-center gap-1"
+          >
+            <Sparkles size={10} />
+            {item.deconstructStatus === 'done' ? 'Re-Analyze' : 'Deconstruct'}
+          </button>
+        )}
         <button
           onClick={() => fileRef.current?.click()}
-          className="bg-white/90 text-[#111] text-[10px] font-semibold px-2.5 py-1.5 rounded-lg hover:bg-white transition-colors"
+          className="w-full bg-[rgba(255,255,255,0.15)] text-[#F7F5F0] text-[10px] font-semibold py-1 rounded hover:bg-[rgba(255,255,255,0.25)] transition-colors"
         >
           Replace
         </button>
         <button
           onClick={() => onRemove(item.localId)}
-          className="bg-red-500 text-white text-[10px] font-semibold px-2.5 py-1.5 rounded-lg hover:bg-red-600 transition-colors"
+          className="w-full bg-red-500/80 text-white text-[10px] font-semibold py-1 rounded hover:bg-red-600 transition-colors"
         >
           Remove
         </button>
       </div>
 
       {/* Slide number */}
-      <div className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+      <div className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[10px] font-bold px-1.5 py-0.5 rounded z-10">
         {index + 1}
       </div>
 
       {/* Status */}
-      <div className={`absolute bottom-1.5 left-1.5 right-1.5 text-[9px] font-semibold text-center ${statusColors[item.status]}`}>
+      <div className={`absolute bottom-1.5 left-1.5 right-1.5 text-[9px] font-semibold text-center z-10 ${statusColors[item.status]}`}>
         {statusLabels[item.status]}
         {item.status === 'error' && (
           <span className="ml-1 underline cursor-pointer" onClick={() => onReplace(item.localId, item.file)}>Retry</span>
@@ -122,7 +153,7 @@ function SlideCard({
 
       {/* Warning for wrong dimensions */}
       {item.width && item.height && (item.width !== 1080 || item.height !== 1350) && (
-        <div className="absolute top-1.5 right-1.5">
+        <div className="absolute top-7 right-1.5 z-10">
           <div title={`${item.width}×${item.height}px — not 4:5`} className="w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center">
             <AlertCircle size={10} className="text-black" />
           </div>
@@ -130,7 +161,7 @@ function SlideCard({
       )}
 
       {/* Drag handle */}
-      <div className="absolute top-1/2 right-1.5 -translate-y-1/2 opacity-0 group-hover:opacity-60 cursor-grab">
+      <div className="absolute top-1/2 right-1.5 -translate-y-1/2 opacity-0 group-hover:opacity-60 cursor-grab z-10">
         <GripVertical size={14} className="text-white" />
       </div>
 
@@ -185,12 +216,67 @@ export default function AdminTemplateNewPage() {
   const [saving, setSaving] = useState(false);
   const [createdId, setCreatedId] = useState<string | null>(null);
 
+  // AI Layer Deconstruction State
+  const [autoDeconstruct, setAutoDeconstruct] = useState(true);
+  const [isDeconstructing, setIsDeconstructing] = useState(false);
+
   const addToast = (type: Toast['type'], message: string) => {
     const id = uuidv4();
     setToasts(t => [...t, { id, type, message }]);
     setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 5000);
   };
   const removeToast = (id: string) => setToasts(t => t.filter(x => x.id !== id));
+
+  // ---- Deconstruction ------------------------------------------------------
+  const deconstructSingleSlide = async (localId: string) => {
+    const target = slides.find(s => s.localId === localId);
+    if (!target) return;
+    const idx = slides.findIndex(s => s.localId === localId);
+
+    setSlides(prev => prev.map(s => s.localId === localId ? { ...s, deconstructStatus: 'deconstructing' } : s));
+    try {
+      const res = await deconstructSlideImage(target.file, idx, target.previewDataUrl);
+      setSlides(prev => prev.map(s => s.localId === localId ? {
+        ...s,
+        deconstructStatus: 'done',
+        elements: res.slide.elements,
+        background: res.slide.background,
+        deconstructSummary: res.summary,
+      } : s));
+      addToast('success', `Slide ${idx + 1}: ${res.summary}`);
+    } catch (err: any) {
+      setSlides(prev => prev.map(s => s.localId === localId ? { ...s, deconstructStatus: 'error' } : s));
+      addToast('error', `Slide ${idx + 1} deconstruction error: ${err.message}`);
+    }
+  };
+
+  const deconstructAllSlides = async () => {
+    if (slides.length === 0) return;
+    setIsDeconstructing(true);
+    let successCount = 0;
+
+    for (let i = 0; i < slides.length; i++) {
+      const s = slides[i];
+      setSlides(prev => prev.map(x => x.localId === s.localId ? { ...x, deconstructStatus: 'deconstructing' } : x));
+      try {
+        const res = await deconstructSlideImage(s.file, i, s.previewDataUrl);
+        setSlides(prev => prev.map(x => x.localId === s.localId ? {
+          ...x,
+          deconstructStatus: 'done',
+          elements: res.slide.elements,
+          background: res.slide.background,
+          deconstructSummary: res.summary,
+        } : x));
+        successCount++;
+      } catch (err: any) {
+        console.warn(`Slide ${i + 1} deconstruction error:`, err);
+        setSlides(prev => prev.map(x => x.localId === s.localId ? { ...x, deconstructStatus: 'error' } : x));
+      }
+    }
+
+    setIsDeconstructing(false);
+    addToast('success', `AI Deconstructed ${successCount} slide(s) into editable layers!`);
+  };
 
   // ---- Slide management ----------------------------------------------------
   const addFiles = useCallback(async (files: File[]) => {
@@ -236,8 +322,38 @@ export default function AdminTemplateNewPage() {
   const goBack = () => setStep(s => Math.max(0, s - 1));
 
   // ---- Upload all slides ---------------------------------------------------
-  const uploadAllSlides = async (templateId: string): Promise<Array<{ publicUrl: string; storagePath: string; width?: number; height?: number }>> => {
-    const results: Array<{ publicUrl: string; storagePath: string; width?: number; height?: number }> = [];
+  const uploadAllSlides = async (templateId: string): Promise<Array<{
+    publicUrl: string;
+    storagePath: string;
+    width?: number;
+    height?: number;
+    background?: any;
+    elements?: any[];
+  }>> => {
+    // If autoDeconstruct is true, ensure any slides missing elements get deconstructed
+    if (autoDeconstruct) {
+      for (let i = 0; i < slides.length; i++) {
+        if (!slides[i].elements || slides[i].elements!.length === 0) {
+          try {
+            const deconstructRes = await deconstructSlideImage(slides[i].file, i, slides[i].previewDataUrl);
+            slides[i].elements = deconstructRes.slide.elements;
+            slides[i].background = deconstructRes.slide.background;
+            slides[i].deconstructStatus = 'done';
+          } catch (e) {
+            console.warn('Auto deconstruction skipped for slide', i, e);
+          }
+        }
+      }
+    }
+
+    const results: Array<{
+      publicUrl: string;
+      storagePath: string;
+      width?: number;
+      height?: number;
+      background?: any;
+      elements?: any[];
+    }> = [];
 
     for (let i = 0; i < slides.length; i++) {
       const slide = slides[i];
@@ -246,11 +362,23 @@ export default function AdminTemplateNewPage() {
       const result = await uploadSlideImage(templateId, i, slide.file);
       if (result) {
         setSlides(prev => prev.map(s => s.localId === slide.localId ? { ...s, status: 'done', publicUrl: result.publicUrl, storagePath: result.storagePath } : s));
-        results.push({ ...result, width: slide.width, height: slide.height });
+        results.push({
+          ...result,
+          width: slide.width,
+          height: slide.height,
+          background: slide.background,
+          elements: slide.elements,
+        });
       } else {
         setSlides(prev => prev.map(s => s.localId === slide.localId ? { ...s, status: 'done', publicUrl: slide.previewDataUrl } : s));
-        // Use local data URL as fallback
-        results.push({ publicUrl: slide.previewDataUrl, storagePath: '', width: slide.width, height: slide.height });
+        results.push({
+          publicUrl: slide.previewDataUrl,
+          storagePath: '',
+          width: slide.width,
+          height: slide.height,
+          background: slide.background,
+          elements: slide.elements,
+        });
       }
     }
     return results;
@@ -430,6 +558,50 @@ export default function AdminTemplateNewPage() {
               onChange={e => addFiles(Array.from(e.target.files || []))}
             />
 
+            {/* AI Layer Deconstruction Panel */}
+            {slides.length > 0 && (
+              <div className="bg-[#1a1917] border border-[rgba(255,255,255,0.08)] rounded-2xl p-5 mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-start sm:items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[rgba(255,90,0,0.15)] border border-[rgba(255,90,0,0.3)] flex items-center justify-center text-[#FF5A00] flex-shrink-0">
+                      <Sparkles size={20} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-[14px] font-bold text-[#F7F5F0]">AI Layer Deconstruction (Gemini Vision)</p>
+                        <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                          Phase 1 Active
+                        </span>
+                      </div>
+                      <p className="text-[12px] text-[rgba(247,245,240,0.45)] mt-0.5">
+                        Decomposes flattened slide images into editable headline, subtext, shapes, and background canvas objects.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={deconstructAllSlides}
+                      disabled={isDeconstructing}
+                      className="px-4 py-2 bg-[#FF5A00] hover:bg-[#FF6A1A] disabled:opacity-50 text-white rounded-xl text-[12px] font-bold flex items-center gap-2 transition-all shadow-lg shadow-[rgba(255,90,0,0.2)]"
+                    >
+                      {isDeconstructing ? (
+                        <>
+                          <RefreshCw size={14} className="animate-spin" />
+                          <span>Deconstructing Layers...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={14} />
+                          <span>Deconstruct All ({slides.length})</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Slides grid */}
             {slides.length > 0 && (
               <div>
@@ -451,6 +623,7 @@ export default function AdminTemplateNewPage() {
                       onRemove={removeSlide}
                       onReplace={replaceSlide}
                       onPreview={() => { setSlideModalIndex(i); setSlideModalOpen(true); }}
+                      onDeconstruct={deconstructSingleSlide}
                     />
                   ))}
                 </div>

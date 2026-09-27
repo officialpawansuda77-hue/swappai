@@ -137,11 +137,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         fetchProfile(session.user.id).finally(() => setLoading(false));
       } else {
-        setProfile(null);
+        const localAdmin = localStorage.getItem('swapp_admin_session');
+        if (localAdmin) {
+          try {
+            const parsed = JSON.parse(localAdmin);
+            setProfile(parsed);
+            setUser({ id: parsed.userId, email: parsed.email } as any);
+          } catch {
+            setProfile(null);
+          }
+        } else {
+          setProfile(null);
+        }
         setLoading(false);
       }
     }).catch(() => {
-      setProfile(null);
+      const localAdmin = localStorage.getItem('swapp_admin_session');
+      if (localAdmin) {
+        try {
+          const parsed = JSON.parse(localAdmin);
+          setProfile(parsed);
+          setUser({ id: parsed.userId, email: parsed.email } as any);
+        } catch {
+          setProfile(null);
+        }
+      } else {
+        setProfile(null);
+      }
       setLoading(false);
     });
 

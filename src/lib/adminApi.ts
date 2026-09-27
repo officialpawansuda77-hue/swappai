@@ -1,5 +1,5 @@
 import { supabase, uploadFile, STORAGE_BUCKETS } from './supabase';
-import { Template, TemplateFormData, AdminStats, Slide } from '../types';
+import { Template, TemplateFormData, AdminStats, Slide, CanvasElement } from '../types';
 import { getCustomTemplates, saveCustomTemplate, deleteCustomTemplate, getTemplateById, SEED_TEMPLATES } from './templates';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -140,7 +140,14 @@ export async function fetchTemplateAdmin(id: string): Promise<Template | null> {
 
 export async function createTemplateDraft(
   formData: TemplateFormData,
-  slides: Array<{ publicUrl: string; storagePath: string; width?: number; height?: number }>,
+  slides: Array<{
+    publicUrl: string;
+    storagePath: string;
+    width?: number;
+    height?: number;
+    background?: { type: 'solid' | 'image'; value: string };
+    elements?: CanvasElement[];
+  }>,
   thumbnailUrl?: string,
   userId?: string
 ): Promise<{ id: string } | null> {
@@ -152,8 +159,8 @@ export async function createTemplateDraft(
     order: i,
     width: s.width || 1080,
     height: s.height || 1350,
-    background: { type: 'image', value: s.publicUrl },
-    elements: [],
+    background: s.background || { type: 'image', value: s.publicUrl },
+    elements: s.elements && s.elements.length > 0 ? s.elements : [],
     previewUrl: s.publicUrl,
   }));
 
@@ -220,8 +227,8 @@ export async function createTemplateDraft(
         slide_index: i,
         width: slide.width || 1080,
         height: slide.height || 1350,
-        background: { type: 'image', value: slide.publicUrl },
-        elements: [],
+        background: slide.background || { type: 'image', value: slide.publicUrl },
+        elements: slide.elements && slide.elements.length > 0 ? slide.elements : [],
         preview_url: slide.publicUrl,
       });
     }

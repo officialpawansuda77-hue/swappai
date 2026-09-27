@@ -147,6 +147,10 @@ export interface SlideUploadItem {
   width?: number;
   height?: number;
   slideId?: string;
+  elements?: CanvasElement[];
+  background?: SlideBackground;
+  deconstructStatus?: 'idle' | 'deconstructing' | 'done' | 'error';
+  deconstructSummary?: string;
 }
 
 // ---- PROJECT TYPES ---------------------------------------------------------
