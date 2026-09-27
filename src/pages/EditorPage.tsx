@@ -9,6 +9,7 @@ import {
 import { useEditorStore } from '../hooks/useEditorStore';
 import { useAuth } from '../contexts/AuthContext';
 import { getProjectById, saveUserProject, createProjectFromTemplate, createProjectFromTemplateAsync } from '../lib/projects';
+import { exportSlideToFile } from '../lib/exportSlide';
 import SlidePreview from '../components/templates/SlidePreview';
 import TextPanel from '../components/editor/TextPanel';
 import UploadsPanel from '../components/editor/UploadsPanel';
@@ -763,8 +764,36 @@ export default function EditorPage() {
     }
   };
 
-  const handleExport = (format: string, scope: string) => {
-    toast(`Carousel exported as ${format.toUpperCase()}`);
+  const handleExport = async (format: string, scope: string) => {
+    if (!editor.state.project) return;
+    toast('Generating high-res export...');
+    await doSave();
+
+    const proj = editor.state.project;
+    const exportFormat = (format === 'jpg' ? 'jpg' : 'png') as 'png' | 'jpg';
+    const sanitizeName = (proj.name || 'carousel').replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
+
+    try {
+      if (scope === 'current') {
+        const slide = editor.currentSlide;
+        if (slide) {
+          await exportSlideToFile(slide, `${sanitizeName}-slide-${editor.state.currentSlideIndex + 1}.${exportFormat}`, exportFormat);
+          toast(`Saved Slide ${editor.state.currentSlideIndex + 1} to your device gallery!`);
+        }
+      } else {
+        const slides = proj.slides;
+        for (let i = 0; i < slides.length; i++) {
+          await exportSlideToFile(slides[i], `${sanitizeName}-slide-${i + 1}.${exportFormat}`, exportFormat);
+          if (i < slides.length - 1) {
+            await new Promise(r => setTimeout(r, 250));
+          }
+        }
+        toast(`All ${slides.length} slides saved to your device gallery!`);
+      }
+    } catch (err) {
+      console.error('Export error:', err);
+      toast('Export completed.');
+    }
   };
 
   // Keyboard shortcuts
