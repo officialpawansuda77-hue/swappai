@@ -4,7 +4,7 @@ import { Plus, Clock, Layers, Sparkles, ArrowRight, ShieldCheck, AlertCircle, X 
 import Navbar from '../components/marketing/Navbar';
 import SlidePreview from '../components/templates/SlidePreview';
 import TemplateCard from '../components/templates/TemplateCard';
-import { getPublishedTemplates } from '../lib/templates';
+import { getPublishedTemplates, fetchLivePublishedTemplates } from '../lib/templates';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserSubscription, UserSubscription, PLANS } from '../lib/subscription';
 import { getUserProjects } from '../lib/projects';
@@ -24,6 +24,7 @@ function timeAgo(dateStr: string): string {
 export default function DashboardPage() {
   const { profile, user, loading } = useAuth();
   const navigate = useNavigate();
+  const [, setReload] = useState(0);
   const templates = getPublishedTemplates();
   const trending = templates.filter(t => t.isTrending).slice(0, 4);
 
@@ -32,6 +33,7 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
 
   useEffect(() => {
+    fetchLivePublishedTemplates().then(() => setReload(r => r + 1));
     if (!loading && !user && !profile && !localStorage.getItem('swapp_admin_session')) {
       navigate('/pricing', { replace: true });
       return;

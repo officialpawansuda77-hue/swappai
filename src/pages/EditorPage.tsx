@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useEditorStore } from '../hooks/useEditorStore';
 import { useAuth } from '../contexts/AuthContext';
-import { getProjectById, saveUserProject, createProjectFromTemplate } from '../lib/projects';
+import { getProjectById, saveUserProject, createProjectFromTemplate, createProjectFromTemplateAsync } from '../lib/projects';
 import SlidePreview from '../components/templates/SlidePreview';
 import TextPanel from '../components/editor/TextPanel';
 import UploadsPanel from '../components/editor/UploadsPanel';
@@ -668,7 +668,7 @@ export default function EditorPage() {
     async function initProject() {
       if (templateId) {
         if (!editor.state.project || editor.state.project.templateId !== templateId) {
-          const project = createProjectFromTemplate(templateId, topic, uid);
+          const project = await createProjectFromTemplateAsync(templateId, topic, uid);
           await saveUserProject(project, uid);
           if (!isCancelled) {
             editor.setProject(project);

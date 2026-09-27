@@ -67,7 +67,7 @@ export async function fetchTemplatesAdmin(opts: FetchTemplatesOptions = {}): Pro
 
     const { data, error } = await query;
     if (!error && data) {
-      supabaseTemplates = data.map(mapTemplateRow);
+      supabaseTemplates = data.map(mapTemplateRow).filter(t => !t.id.startsWith('tpl_'));
     }
   } catch {
     // Supabase unavailable or table empty
@@ -138,6 +138,9 @@ export async function fetchTemplateAdmin(id: string): Promise<Template | null> {
 
 // ---- CREATE TEMPLATE --------------------------------------------------------
 
+const isValidUUID = (id?: string): boolean =>
+  Boolean(id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+
 export async function createTemplateDraft(
   formData: TemplateFormData,
   slides: Array<{
@@ -155,7 +158,7 @@ export async function createTemplateDraft(
 
   // Create full local Template object with slides
   const templateSlides: Slide[] = slides.map((s, i) => ({
-    id: `${templateId}_s${i + 1}`,
+    id: uuidv4(),
     order: i,
     width: s.width || 1080,
     height: s.height || 1350,
@@ -184,9 +187,10 @@ export async function createTemplateDraft(
     sourceUrl: formData.sourceUrl,
     attributionRequired: formData.attributionRequired,
     licenseNotes: formData.licenseNotes,
-    status: 'draft',
+    status: 'published',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    publishedAt: new Date().toISOString(),
   };
 
   saveCustomTemplate(localTemplate);
@@ -213,23 +217,23 @@ export async function createTemplateDraft(
       source_platform: formData.sourcePlatform,
       attribution_required: formData.attributionRequired,
       license_notes: formData.licenseNotes,
-      status: 'draft',
+      status: 'published',
+      published_at: new Date().toISOString(),
       use_count: 0,
-      created_by: userId,
+      created_by: isValidUUID(userId) ? userId : null,
     });
 
-    for (let i = 0; i < slides.length; i++) {
-      const slide = slides[i];
-      const slideId = `${templateId}_s${i + 1}`;
+    for (let i = 0; i < templateSlides.length; i++) {
+      const slide = templateSlides[i];
       await supabase.from('template_slides').insert({
-        id: slideId,
+        id: slide.id,
         template_id: templateId,
         slide_index: i,
         width: slide.width || 1080,
         height: slide.height || 1350,
-        background: slide.background || { type: 'image', value: slide.publicUrl },
+        background: slide.background,
         elements: slide.elements && slide.elements.length > 0 ? slide.elements : [],
-        preview_url: slide.publicUrl,
+        preview_url: slide.previewUrl,
       });
     }
   } catch (err) {
@@ -295,7 +299,7 @@ export async function publishTemplate(id: string, userId?: string): Promise<bool
     await supabase.from('templates').update({
       status: 'published',
       published_at: new Date().toISOString(),
-      published_by: userId,
+      published_by: isValidUUID(userId) ? userId : null,
       updated_at: new Date().toISOString(),
     }).eq('id', id);
   } catch {}

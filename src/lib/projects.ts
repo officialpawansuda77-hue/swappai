@@ -1,5 +1,5 @@
 import { Project, Slide } from '../types';
-import { getTemplateById } from './templates';
+import { getTemplateById, getTemplateByIdAsync } from './templates';
 import { supabase, isSupabaseConfigured } from './supabase';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -81,6 +81,18 @@ export function createProjectFromTemplate(
   };
 
   return project;
+}
+
+export async function createProjectFromTemplateAsync(
+  templateId: string,
+  topic?: string,
+  userId?: string
+): Promise<Project> {
+  let tpl = getTemplateById(templateId);
+  if (!tpl) {
+    tpl = await getTemplateByIdAsync(templateId);
+  }
+  return createProjectFromTemplate(templateId, topic, userId);
 }
 
 // ─── GET USER PROJECTS ────────────────────────────────────────────────────────

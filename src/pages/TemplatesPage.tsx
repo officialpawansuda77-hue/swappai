@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import Navbar from '../components/marketing/Navbar';
 import Footer from '../components/marketing/Footer';
 import TemplateCard from '../components/templates/TemplateCard';
 import { useScrollAnimation } from '../hooks/useScrollAnimation';
-import { getTemplatesByCategory } from '../lib/templates';
+import { getPublishedTemplates, fetchLivePublishedTemplates } from '../lib/templates';
+import { Template } from '../types';
 
 const CATEGORIES = [
-  'All', 'Trending', 'New', 'AI', 'Business', 'Marketing', 'Education',
-  'Finance', 'Personal Brand', 'Creator', 'SaaS', 'Productivity', 'Motivation', 'Quotes',
+  'All', 'Trending', 'New', 'AI', 'Marketing', 'Creator', 'Business', 'Education',
+  'Finance', 'Personal Brand', 'SaaS', 'Productivity', 'Motivation', 'Quotes',
 ];
 
 const SORT_OPTIONS = ['Trending', 'Newest', 'Most Used'];
@@ -18,8 +19,24 @@ export default function TemplatesPage() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [sortBy, setSortBy] = useState('Trending');
   const [search, setSearch] = useState('');
+  const [allTemplates, setAllTemplates] = useState<Template[]>(() => getPublishedTemplates());
 
-  let filtered = getTemplatesByCategory(activeCategory);
+  useEffect(() => {
+    let active = true;
+    fetchLivePublishedTemplates().then(live => {
+      if (active && live && live.length > 0) {
+        setAllTemplates(live);
+      }
+    });
+    return () => { active = false; };
+  }, []);
+
+  let filtered = allTemplates.filter(t => {
+    if (activeCategory === 'All') return true;
+    if (activeCategory === 'Trending') return t.isTrending;
+    if (activeCategory === 'New') return t.isNew;
+    return t.category.toLowerCase() === activeCategory.toLowerCase();
+  });
 
   if (search.trim()) {
     const q = search.toLowerCase();
@@ -33,6 +50,8 @@ export default function TemplatesPage() {
 
   if (sortBy === 'Newest') {
     filtered = [...filtered].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  } else if (sortBy === 'Most Used') {
+    filtered = [...filtered].sort((a, b) => (b.useCount || 0) - (a.useCount || 0));
   }
 
   return (

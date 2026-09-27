@@ -7,7 +7,7 @@ import FAQSection from '../components/marketing/FAQSection';
 import TemplateCard from '../components/templates/TemplateCard';
 import SlidePreview from '../components/templates/SlidePreview';
 import { useScrollAnimation } from '../hooks/useScrollAnimation';
-import { getPublishedTemplates, getTemplatesByCategory } from '../lib/templates';
+import { getPublishedTemplates, getTemplatesByCategory, fetchLivePublishedTemplates } from '../lib/templates';
 import { PLANS } from '../lib/subscription';
 import { Template } from '../types';
 
@@ -839,6 +839,12 @@ function FinalCTA() {
 // ---- MAIN PAGE --------------------------------------------------------------
 export default function HomePage() {
   useScrollAnimation();
+  const [, setReload] = useState(0);
+
+  useEffect(() => {
+    fetchLivePublishedTemplates().then(() => setReload(r => r + 1));
+  }, []);
+
   const templates = getPublishedTemplates();
 
   return (

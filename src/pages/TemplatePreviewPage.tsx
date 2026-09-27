@@ -1,20 +1,46 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Heart, ArrowRight, Layers } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/marketing/Navbar';
 import Footer from '../components/marketing/Footer';
 import SlidePreview from '../components/templates/SlidePreview';
-import { getTemplateById, getPublishedTemplates } from '../lib/templates';
+import { getTemplateById, getPublishedTemplates, getTemplateByIdAsync } from '../lib/templates';
 
 export default function TemplatePreviewPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
-  const template = getTemplateById(id || '');
+  const [template, setTemplate] = useState(() => getTemplateById(id || ''));
+  const [loading, setLoading] = useState(!template);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (id) {
+      const syncTpl = getTemplateById(id);
+      if (syncTpl) {
+        setTemplate(syncTpl);
+        setLoading(false);
+      } else {
+        setLoading(true);
+        getTemplateByIdAsync(id).then(res => {
+          if (res) setTemplate(res);
+          setLoading(false);
+        });
+      }
+    }
+  }, [id]);
+
   const similar = getPublishedTemplates().filter(t => t.id !== id && t.category === template?.category).slice(0, 3);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F7F5F0] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-[#FF5A00] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!template) {
     return (
