@@ -16,6 +16,8 @@ import PublishTemplateDialog from '../components/editor/PublishTemplateDialog';
 import TextPanel from '../components/editor/TextPanel';
 import UploadsPanel from '../components/editor/UploadsPanel';
 import IconsPanel from '../components/editor/IconsPanel';
+import FontPicker from '../components/editor/FontPicker';
+import { loadGoogleFont, preloadPopularFonts } from '../lib/googleFonts';
 import ShapesPanel from '../components/editor/ShapesPanel';
 import ElementsPanel from '../components/editor/ElementsPanel';
 import BackgroundPanel from '../components/editor/BackgroundPanel';
@@ -301,6 +303,11 @@ function PropertiesPanel({
     }
   };
 
+  // Preload popular Google Fonts in the background (non-blocking).
+  useEffect(() => {
+    preloadPopularFonts();
+  }, []);
+
   const updateProp = (key: string, value: unknown) => {
     onUpdate({ properties: { ...element.properties, [key]: value } as any });
   };
@@ -423,15 +430,14 @@ function PropertiesPanel({
 
           <div className="mb-3">
             <p className="text-[10px] text-[rgba(247,245,240,0.3)] mb-1">Font Family</p>
-            <select
-              value={textProps.fontFamily}
-              onChange={e => updateProp('fontFamily', e.target.value)}
-              className="w-full bg-[rgba(255,255,255,0.06)] text-[rgba(247,245,240,0.8)] text-[12px] p-2 rounded-lg border border-[rgba(255,255,255,0.08)] outline-none"
-            >
-              {['Inter', 'Manrope', 'Georgia', 'Times New Roman', 'Arial', 'Helvetica'].map(f => (
-                <option key={f} value={f} className="bg-[#1F1E1B]">{f}</option>
-              ))}
-            </select>
+            <FontPicker
+              value={textProps.fontFamily || 'Inter'}
+              onChange={(family) => {
+                // Ensure the typeface is loading before applying.
+                loadGoogleFont(family);
+                updateProp('fontFamily', family);
+              }}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-2 mb-3">
@@ -1507,4 +1513,5 @@ export default function EditorPage() {
     </div>
   );
 }
+
 

@@ -1,6 +1,14 @@
 import { Slide, TextProperties, ShapeProperties, ImageProperties } from '../types';
+import { ensureFontsLoaded } from './googleFonts';
 
 export async function renderSlideToCanvas(slide: Slide): Promise<HTMLCanvasElement> {
+  // Make sure Google Fonts used by text elements are loaded before drawing,
+  // otherwise canvas falls back to a system font in the export.
+  const families = slide.elements
+    .filter((el) => el.type === 'text')
+    .map((el) => (el.properties as TextProperties).fontFamily || 'Inter');
+  await ensureFontsLoaded(families);
+
   const canvas = document.createElement('canvas');
   const width = slide.width && slide.width > 50 ? slide.width : 1080;
   const height = slide.height && slide.height > 50 ? slide.height : 1350;
@@ -160,3 +168,4 @@ export async function exportSlideToFile(
   const dataUrl = canvas.toDataURL(mimeType, 0.95);
   downloadDataUrl(dataUrl, filename);
 }
+
