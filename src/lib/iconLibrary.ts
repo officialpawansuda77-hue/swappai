@@ -50,6 +50,27 @@ export async function iconToDataUrl(iconId: string, color: string): Promise<stri
   });
 }
 
+/**
+ * Thumbnail loader for the icon grid. Loads via fetch — the same path as
+ * search, which is more reliable than hotlinking <img> on some mobile
+ * networks — and caches per icon+color. Resolves to '' on failure so the
+ * grid can show a graceful fallback instead of a broken image.
+ */
+const thumbCache = new Map<string, Promise<string>>();
+
+export function iconThumbUrl(iconId: string, color: string): Promise<string> {
+  const key = `${iconId}|${color}`;
+  const hit = thumbCache.get(key);
+  if (hit) return hit;
+  const p = iconToDataUrl(iconId, color).catch(() => '');
+  thumbCache.set(key, p);
+  if (thumbCache.size > 500) {
+    const oldest = thumbCache.keys().next().value;
+    if (oldest !== undefined) thumbCache.delete(oldest);
+  }
+  return p;
+}
+
 /** "mdi:arrow-up-right" -> "arrow up right" */
 export function prettyName(iconId: string): string {
   const name = iconId.split(':')[1] || iconId;
