@@ -1,8 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Upload, Image as ImageIcon, Trash2, Plus, Wallpaper, Scissors, Loader2 } from 'lucide-react';
+import { Upload, Image as ImageIcon, Trash2, Plus, Wallpaper, Scissors, Loader2, Sparkles } from 'lucide-react';
 import { CanvasElement, ImageProperties, SlideBackground } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
 import { removeImageBackground } from '../../lib/backgroundRemoval';
+import { generateAiImage, STYLE_PRESETS, ASPECT_RATIOS } from '../../lib/aiImageGeneration';
 
 interface UploadsPanelProps {
   onAddElement: (element: CanvasElement) => void;
@@ -50,6 +51,10 @@ export default function UploadsPanel({ onAddElement, onSetBackground, onToast }:
 
   const [isDragging, setIsDragging] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiStyle, setAiStyle] = useState('Photorealistic');
+  const [aiRatio, setAiRatio] = useState('1:1');
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     try {
@@ -140,6 +145,29 @@ export default function UploadsPanel({ onAddElement, onSetBackground, onToast }:
     }
   };
 
+  const handleGenerate = async () => {
+    if (generating) return;
+    if (!aiPrompt.trim()) {
+      onToast('Describe the image you want first');
+      return;
+    }
+    setGenerating(true);
+    onToast('Generating image… (takes ~20-40 seconds)');
+    try {
+      const fullPrompt = aiPrompt.trim() + (STYLE_PRESETS[aiStyle] || '');
+      const [w, h] = ASPECT_RATIOS[aiRatio] || ASPECT_RATIOS['1:1'];
+      const dataUrl = await generateAiImage(fullPrompt, { width: w, height: h });
+      const newItem = { id: uuidv4(), name: `AI: ${aiPrompt.trim().slice(0, 40)}`, url: dataUrl };
+      setUploads(prev => [newItem, ...prev]);
+      onToast('Image generated — added to your media');
+      setAiPrompt('');
+    } catch (err) {
+      onToast(err instanceof Error ? err.message : 'Image generation failed');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const handleSetBg = (e: React.MouseEvent, url: string) => {
     e.stopPropagation();
     onSetBackground({ type: 'image', value: url });
@@ -187,6 +215,45 @@ export default function UploadsPanel({ onAddElement, onSetBackground, onToast }:
         <Upload size={18} className="mx-auto text-[rgba(247,245,240,0.4)] mb-1.5" />
         <p className="text-[11px] font-medium text-[rgba(247,245,240,0.7)]">Drag & drop images here</p>
         <p className="text-[10px] text-[rgba(247,245,240,0.4)] mt-0.5">PNG, JPG, WebP up to 10MB</p>
+      </div>
+
+      {/* AI Image Generator */}
+      <div className="rounded-xl border border-[rgba(168,85,247,0.25)] bg-[rgba(168,85,247,0.06)] p-3 mb-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Sparkles size={14} className="text-[#A855F7]" />
+          <span className="text-[12px] font-bold uppercase tracking-wider text-[rgba(247,245,240,0.9)]">AI Generate</span>
+        </div>
+        <textarea
+          value={aiPrompt}
+          onChange={(e) => setAiPrompt(e.target.value)}
+          placeholder="Describe your image… e.g. a cozy coffee shop interior, warm light"
+          rows={2}
+          className="w-full rounded-lg bg-[rgba(0,0,0,0.3)] border border-[rgba(255,255,255,0.12)] px-2.5 py-2 text-[12px] text-[#F7F5F0] placeholder-[rgba(247,245,240,0.35)] focus:outline-none focus:border-[#A855F7] resize-none mb-2"
+        />
+        <div className="flex gap-2 mb-2">
+          <select
+            value={aiStyle}
+            onChange={(e) => setAiStyle(e.target.value)}
+            className="flex-1 rounded-lg bg-[rgba(0,0,0,0.3)] border border-[rgba(255,255,255,0.12)] px-2 py-1.5 text-[11px] text-[#F7F5F0] focus:outline-none focus:border-[#A855F7]"
+          >
+            {Object.keys(STYLE_PRESETS).map(k => <option key={k} value={k}>{k}</option>)}
+          </select>
+          <select
+            value={aiRatio}
+            onChange={(e) => setAiRatio(e.target.value)}
+            className="rounded-lg bg-[rgba(0,0,0,0.3)] border border-[rgba(255,255,255,0.12)] px-2 py-1.5 text-[11px] text-[#F7F5F0] focus:outline-none focus:border-[#A855F7]"
+          >
+            {Object.keys(ASPECT_RATIOS).map(k => <option key={k} value={k}>{k}</option>)}
+          </select>
+        </div>
+        <button
+          onClick={handleGenerate}
+          disabled={generating}
+          className="w-full py-2 px-3 rounded-xl bg-[#A855F7] hover:bg-[#9333EA] disabled:opacity-60 text-white font-semibold text-[13px] flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+        >
+          {generating ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
+          {generating ? 'Generating…' : 'Generate Image'}
+        </button>
       </div>
 
       {/* Uploaded Gallery */}
