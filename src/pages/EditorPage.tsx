@@ -4,7 +4,7 @@ import {
   Undo2, Redo2, Eye, EyeOff, Download, Save, ChevronLeft, ChevronRight,
   Plus, Copy, Trash2, Type, Image as ImageIcon, Square, Layers, Palette,
   AlignLeft, AlignCenter, AlignRight, Lock, Unlock,
-  RotateCcw, ArrowLeft, Sparkles, X, LayoutGrid, ArrowUp, ArrowDown, Wallpaper
+  RotateCcw, ArrowLeft, Sparkles, X, LayoutGrid, ArrowUp, ArrowDown, Wallpaper, Scissors, Loader2
 } from 'lucide-react';
 import { useEditorStore } from '../hooks/useEditorStore';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,6 +19,7 @@ import BackgroundPanel from '../components/editor/BackgroundPanel';
 import BrandKitPanel from '../components/editor/BrandKitPanel';
 import { Project, Slide, CanvasElement, TextProperties, ShapeProperties, ImageProperties, SlideBackground } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+import { removeImageBackground } from '../lib/backgroundRemoval';
 
 // ─── AUTOSAVE HOOK ────────────────────────────────────────────────────────────
 function useAutosave(saveStatus: string, onSave: () => void) {
@@ -229,6 +230,7 @@ interface PropertiesPanelProps {
   onDuplicate: () => void;
   onDelete: () => void;
   onSetAsBackground?: (url: string) => void;
+  onToast?: (msg: string) => void;
 }
 
 function PropertiesPanel({
@@ -239,6 +241,7 @@ function PropertiesPanel({
   onDuplicate,
   onDelete,
   onSetAsBackground,
+  onToast,
 }: PropertiesPanelProps) {
   if (!element) {
     return (
@@ -258,6 +261,24 @@ function PropertiesPanel({
   const textProps = element.properties as TextProperties;
   const shapeProps = element.properties as ShapeProperties;
   const imageProps = element.properties as ImageProperties;
+
+  const [removingBg, setRemovingBg] = useState(false);
+  const toastMsg = onToast ?? (() => {});
+
+  const handleRemoveBg = async () => {
+    if (removingBg) return;
+    setRemovingBg(true);
+    toastMsg('Removing background… (first use can take a minute)');
+    try {
+      const cutout = await removeImageBackground(imageProps.src);
+      updateProp('src', cutout);
+      toastMsg('Background removed');
+    } catch (err) {
+      toastMsg(err instanceof Error ? err.message : 'Background removal failed');
+    } finally {
+      setRemovingBg(false);
+    }
+  };
 
   const updateProp = (key: string, value: unknown) => {
     onUpdate({ properties: { ...element.properties, [key]: value } as any });
@@ -556,6 +577,15 @@ function PropertiesPanel({
               ))}
             </div>
           </div>
+
+          <button
+            onClick={handleRemoveBg}
+            disabled={removingBg}
+            className="w-full py-2 px-3 rounded-lg bg-[#FF5A00] hover:bg-[#e04f00] disabled:opacity-60 text-[11px] font-semibold text-white flex items-center justify-center gap-1.5 transition-colors mb-2"
+          >
+            {removingBg ? <Loader2 size={13} className="animate-spin" /> : <Scissors size={13} />}
+            {removingBg ? 'Removing background…' : 'Remove Background'}
+          </button>
 
           {onSetAsBackground && (
             <button
@@ -1163,6 +1193,7 @@ export default function EditorPage() {
               editor.updateSlideBackground(editor.state.currentSlideIndex, { type: 'image', value: url });
               toast('Set as slide background');
             }}
+            onToast={toast}
           />
         </div>
       </div>
