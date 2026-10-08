@@ -4,7 +4,8 @@ import {
   Undo2, Redo2, Eye, EyeOff, Download, Save, ChevronLeft, ChevronRight,
   Plus, Copy, Trash2, Type, Image as ImageIcon, Square, Layers, Palette,
   AlignLeft, AlignCenter, AlignRight, Lock, Unlock,
-  RotateCcw, ArrowLeft, Sparkles, X, LayoutGrid, ArrowUp, ArrowDown, Wallpaper, Scissors, Loader2, Star
+  RotateCcw, ArrowLeft, Sparkles, X, LayoutGrid, ArrowUp, ArrowDown, Wallpaper, Scissors, Loader2, Star,
+  SlidersHorizontal
 } from 'lucide-react';
 import { useEditorStore } from '../hooks/useEditorStore';
 import { useAuth } from '../contexts/AuthContext';
@@ -46,22 +47,38 @@ interface CanvasViewProps {
 function CanvasView({ slide, selectedElementId, onSelectElement, onUpdateElement, scale }: CanvasViewProps) {
   const [dragging, setDragging] = useState<{ id: string; startX: number; startY: number; elX: number; elY: number } | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
+  const lastTapRef = useRef<{ id: string; time: number } | null>(null);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent, el: CanvasElement) => {
+  // Pointer Events unify mouse + touch, so drag works on mobile too.
+  const handlePointerDown = useCallback((e: React.PointerEvent, el: CanvasElement) => {
     if (el.locked || editingTextId === el.id) return;
     e.stopPropagation();
     onSelectElement(el.id);
     setDragging({ id: el.id, startX: e.clientX, startY: e.clientY, elX: el.x, elY: el.y });
   }, [onSelectElement, editingTextId]);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!dragging) return;
     const dx = (e.clientX - dragging.startX) / scale;
     const dy = (e.clientY - dragging.startY) / scale;
     onUpdateElement(dragging.id, { x: Math.round(dragging.elX + dx), y: Math.round(dragging.elY + dy) });
   }, [dragging, scale, onUpdateElement]);
 
-  const handleMouseUp = useCallback(() => setDragging(null), []);
+  const handlePointerUp = useCallback(() => setDragging(null), []);
+
+  // Double-tap (touch) or double-click (mouse) to edit text.
+  const handleTextTap = useCallback((e: React.SyntheticEvent, el: CanvasElement) => {
+    e.stopPropagation();
+    onSelectElement(el.id);
+    if (el.locked) return;
+    const now = Date.now();
+    if (lastTapRef.current?.id === el.id && now - lastTapRef.current.time < 350) {
+      setEditingTextId(el.id);
+      lastTapRef.current = null;
+    } else {
+      lastTapRef.current = { id: el.id, time: now };
+    }
+  }, [onSelectElement]);
 
   const bgStyle: React.CSSProperties =
     slide.background.type === 'solid'
@@ -75,10 +92,10 @@ function CanvasView({ slide, selectedElementId, onSelectElement, onUpdateElement
   return (
     <div
       className="relative overflow-hidden select-none"
-      style={{ width: slide.width * scale, height: slide.height * scale, ...bgStyle, cursor: dragging ? 'grabbing' : 'default' }}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
+      style={{ width: slide.width * scale, height: slide.height * scale, ...bgStyle, cursor: dragging ? 'grabbing' : 'default', touchAction: 'none' }}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onSelectElement(null);
@@ -94,7 +111,7 @@ function CanvasView({ slide, selectedElementId, onSelectElement, onUpdateElement
         return (
           <div
             key={el.id}
-            onMouseDown={(e) => handleMouseDown(e, el)}
+            onPointerDown={(e) => handlePointerDown(e, el)}
             onClick={(e) => {
               e.stopPropagation();
               onSelectElement(el.id);
@@ -112,6 +129,7 @@ function CanvasView({ slide, selectedElementId, onSelectElement, onUpdateElement
               outline: isSelected ? '2px solid #FF5A00' : '2px solid transparent',
               outlineOffset: 2,
               boxSizing: 'border-box',
+              touchAction: 'none',
             }}
           >
             {el.type === 'text' && (
@@ -151,6 +169,7 @@ function CanvasView({ slide, selectedElementId, onSelectElement, onUpdateElement
                     e.stopPropagation();
                     if (!el.locked) setEditingTextId(el.id);
                   }}
+                  onClick={(e) => handleTextTap(e, el)}
                   style={{
                     width: '100%',
                     height: '100%',
@@ -1210,6 +1229,30 @@ export default function EditorPage() {
         </div>
       </div>
 
+      {/* ── MOBILE SELECTED-ELEMENT ACTIONS ─────────────── */}
+      {editor.selectedElement && !mobileSheet && (
+        <div className="md:hidden flex items-center justify-center gap-2 px-4 py-2 bg-[#141311] border-t border-[rgba(255,255,255,0.06)] flex-shrink-0">
+          <button
+            onClick={() => setMobileSheet('element')}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold text-white bg-[#FF5A00]"
+          >
+            <SlidersHorizontal size={14} /> Edit
+          </button>
+          <button
+            onClick={handleDuplicateSelected}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold text-[rgba(247,245,240,0.8)] bg-[rgba(255,255,255,0.06)]"
+          >
+            <Copy size={14} /> Copy
+          </button>
+          <button
+            onClick={handleDeleteSelected}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold text-red-400 bg-[rgba(255,50,50,0.08)]"
+          >
+            <Trash2 size={14} /> Delete
+          </button>
+        </div>
+      )}
+
       {/* ── MOBILE BOTTOM TOOLBAR ─────────────────────────── */}
       <div className="editor-bottom-nav md:hidden flex items-center justify-around py-1" style={{ paddingBottom: 'max(4px, env(safe-area-inset-bottom, 0px))' }}>
         {toolTabs.slice(0, 6).map(tool => {
@@ -1241,7 +1284,7 @@ export default function EditorPage() {
           />
           <div className="bottom-sheet md:hidden">
             <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-[rgba(255,255,255,0.08)]">
-              <span className="text-[13px] font-bold text-[rgba(247,245,240,0.9)] capitalize">{mobileSheet.replace('brandKit', 'Brand Kit')}</span>
+              <span className="text-[13px] font-bold text-[rgba(247,245,240,0.9)] capitalize">{mobileSheet === 'element' ? 'Edit Element' : mobileSheet.replace('brandKit', 'Brand Kit')}</span>
               <button
                 onClick={() => setMobileSheet(null)}
                 className="p-2 rounded-lg text-[rgba(247,245,240,0.5)] hover:text-white"
@@ -1374,6 +1417,38 @@ export default function EditorPage() {
                     </button>
                   </div>
                 </div>
+              )}
+              {mobileSheet === 'element' && editor.selectedElement && (
+                <PropertiesPanel
+                  element={editor.selectedElement}
+                  onUpdate={(updates) => {
+                    if (editor.state.selectedElementId) {
+                      editor.updateElement(editor.state.currentSlideIndex, editor.state.selectedElementId, updates);
+                    }
+                  }}
+                  onBringForward={() => {
+                    if (editor.state.selectedElementId) {
+                      editor.bringForward(editor.state.currentSlideIndex, editor.state.selectedElementId);
+                      toast('Moved forward');
+                    }
+                  }}
+                  onSendBackward={() => {
+                    if (editor.state.selectedElementId) {
+                      editor.sendBackward(editor.state.currentSlideIndex, editor.state.selectedElementId);
+                      toast('Moved backward');
+                    }
+                  }}
+                  onDuplicate={handleDuplicateSelected}
+                  onDelete={() => {
+                    handleDeleteSelected();
+                    setMobileSheet(null);
+                  }}
+                  onSetAsBackground={(url) => {
+                    editor.updateSlideBackground(editor.state.currentSlideIndex, { type: 'image', value: url });
+                    toast('Set as slide background');
+                  }}
+                  onToast={toast}
+                />
               )}
             </div>
           </div>
