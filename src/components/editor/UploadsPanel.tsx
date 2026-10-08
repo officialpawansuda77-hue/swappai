@@ -127,7 +127,7 @@ export default function UploadsPanel({ onAddElement, onSetBackground, onToast }:
     e.stopPropagation();
     if (removingId) return;
     setRemovingId(item.id);
-    onToast('Removing background…');
+    onToast('Removing background… (first use can take a minute)');
     try {
       const cutout = await removeImageBackground(item.url);
       const newItem = { id: uuidv4(), name: `${item.name} (no bg)`, url: cutout };

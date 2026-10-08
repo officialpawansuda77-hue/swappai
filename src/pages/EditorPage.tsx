@@ -268,7 +268,7 @@ function PropertiesPanel({
   const handleRemoveBg = async () => {
     if (removingBg) return;
     setRemovingBg(true);
-    toastMsg('Removing background…');
+    toastMsg('Removing background… (first use can take a minute)');
     try {
       const cutout = await removeImageBackground(imageProps.src);
       updateProp('src', cutout);
