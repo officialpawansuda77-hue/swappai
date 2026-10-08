@@ -8,9 +8,21 @@ interface TemplateCardProps {
   template: Template;
   onSave?: (id: string) => void;
   isSaved?: boolean;
+  creatorName?: string;
+  isOwner?: boolean;
+  onToggleVisibility?: () => void;
+  onDelete?: () => void;
 }
 
-export default function TemplateCard({ template, onSave, isSaved = false }: TemplateCardProps) {
+export default function TemplateCard({
+  template,
+  onSave,
+  isSaved = false,
+  creatorName,
+  isOwner = false,
+  onToggleVisibility,
+  onDelete,
+}: TemplateCardProps) {
   const [hovered, setHovered] = useState(false);
   const [saved, setSaved] = useState(isSaved);
 
@@ -77,6 +89,9 @@ export default function TemplateCard({ template, onSave, isSaved = false }: Temp
           {template.isNew && (
             <span className="tag" style={{ background: 'rgba(17,17,17,0.08)', color: '#6B6B67' }}>New</span>
           )}
+          {template.userId && (
+            <span className="tag" style={{ background: '#7C3AED', color: '#FFFFFF' }}>Community</span>
+          )}
         </div>
 
         {/* Save button */}
@@ -98,14 +113,36 @@ export default function TemplateCard({ template, onSave, isSaved = false }: Temp
         <h3 className="text-[14px] font-semibold text-[#111111] leading-tight mb-1 line-clamp-2">
           {template.name}
         </h3>
+        {creatorName && (
+          <p className="text-[12px] text-[#6B6B67] mb-1">By {creatorName}</p>
+        )}
         <div className="flex items-center justify-between mt-2">
           <div className="flex items-center gap-2">
             <span className="tag tag-dark">{template.category}</span>
+            {template.visibility === 'private' && isOwner && (
+              <span className="tag" style={{ background: 'rgba(17,17,17,0.08)', color: '#6B6B67' }}>Private</span>
+            )}
           </div>
           <span className="text-[12px] text-[#6B6B67]">
             {template.slideCount} slides
           </span>
         </div>
+        {isOwner && (
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[rgba(17,17,17,0.06)]">
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleVisibility?.(); }}
+              className="flex-1 text-[11px] font-semibold py-1.5 rounded-lg border border-[rgba(17,17,17,0.12)] text-[#6B6B67] hover:text-[#111111] hover:border-[#111111] transition-colors"
+            >
+              {template.visibility === 'private' ? 'Make Public' : 'Make Private'}
+            </button>
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete?.(); }}
+              className="flex-1 text-[11px] font-semibold py-1.5 rounded-lg border border-[rgba(220,38,38,0.25)] text-[#DC2626] hover:bg-[rgba(220,38,38,0.06)] transition-colors"
+            >
+              Delete
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -5,13 +5,14 @@ import {
   Plus, Copy, Trash2, Type, Image as ImageIcon, Square, Layers, Palette,
   AlignLeft, AlignCenter, AlignRight, Lock, Unlock,
   RotateCcw, ArrowLeft, Sparkles, X, LayoutGrid, ArrowUp, ArrowDown, Wallpaper, Scissors, Loader2, Star,
-  SlidersHorizontal
+  SlidersHorizontal, Share2
 } from 'lucide-react';
 import { useEditorStore } from '../hooks/useEditorStore';
 import { useAuth } from '../contexts/AuthContext';
 import { getProjectById, saveUserProject, createProjectFromTemplate, createProjectFromTemplateAsync } from '../lib/projects';
 import { exportSlideToFile } from '../lib/exportSlide';
 import SlidePreview from '../components/templates/SlidePreview';
+import PublishTemplateDialog from '../components/editor/PublishTemplateDialog';
 import TextPanel from '../components/editor/TextPanel';
 import UploadsPanel from '../components/editor/UploadsPanel';
 import IconsPanel from '../components/editor/IconsPanel';
@@ -696,6 +697,7 @@ export default function EditorPage() {
 
   const editor = useEditorStore();
   const [showExport, setShowExport] = useState(false);
+  const [showPublish, setShowPublish] = useState(false);
   const [showToast, setShowToast] = useState('');
 
   // Active Tool Panel
@@ -956,6 +958,24 @@ export default function EditorPage() {
           >
             <Save size={13} />
             <span className="hidden sm:inline">Save</span>
+          </button>
+          <button
+            onClick={() => {
+              if (!editor.state.project || editor.state.project.slides.length === 0) {
+                toast('Add some slides before publishing');
+                return;
+              }
+              if (!uid) {
+                toast('Sign in to publish templates');
+                return;
+              }
+              setShowPublish(true);
+            }}
+            className="p-1.5 md:px-3 rounded-lg border border-[rgba(255,255,255,0.12)] text-[rgba(247,245,240,0.85)] hover:text-white hover:border-white transition-all flex items-center gap-1.5 text-[12px] font-medium min-w-[36px] min-h-[36px] justify-center"
+            title="Publish as template"
+          >
+            <Share2 size={13} />
+            <span className="hidden sm:inline">Publish</span>
           </button>
           <button
             onClick={() => setShowExport(true)}
@@ -1458,6 +1478,17 @@ export default function EditorPage() {
       {/* Export modal */}
       {showExport && (
         <ExportModal onClose={() => setShowExport(false)} onExport={handleExport} />
+      )}
+
+      {/* Publish template modal */}
+      {showPublish && editor.state.project && (
+        <PublishTemplateDialog
+          project={editor.state.project}
+          userId={uid || ''}
+          creatorName={profile?.fullName || user?.email?.split('@')[0]}
+          onClose={() => setShowPublish(false)}
+          onPublished={() => toast('Template published \u{1F389}')}
+        />
       )}
 
       {/* Toast */}

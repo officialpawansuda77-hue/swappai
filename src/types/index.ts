@@ -75,6 +75,7 @@ export type TemplateCategory =
   | 'Product' | 'Quotes' | 'Other';
 
 export type TemplateStatus = 'draft' | 'published' | 'archived';
+export type TemplateVisibility = 'public' | 'private';
 export type TemplateSourceType = 'original' | 'licensed' | 'generated' | 'reference_inspired';
 export type TemplateStyle =
   | 'Minimal' | 'Editorial' | 'Bold' | 'Dark' | 'Typography'
@@ -111,6 +112,9 @@ export interface Template {
   createdAt: string;
   updatedAt: string;
   publishedAt?: string;
+  userId?: string; // set for community templates; undefined = official/admin template
+  visibility?: TemplateVisibility;
+  creatorName?: string; // denormalized creator display name (from user_profiles.fullName)
   slides: Slide[];
 }
 

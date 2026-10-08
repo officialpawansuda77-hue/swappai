@@ -358,6 +358,47 @@ export function deleteCustomTemplate(id: string): void {
   }
 }
 
+// ─── DB ROW → TEMPLATE MAPPER (shared with communityTemplates.ts) ─────────────
+// Maps a `templates` table row (+ its joined slides) to the app `Template` type.
+// `user_id` / `visibility` / `creator_name` are community-template columns added by
+// the community-gallery SQL migration — they are undefined until the migration runs.
+export function mapTemplateRowToTemplate(t: any, slidesByTemplate: Record<string, Slide[]>): Template {
+  return {
+    id: t.id,
+    name: t.name,
+    description: t.description || '',
+    category: t.category || 'Creator',
+    categoryId: t.category_id,
+    tags: t.tags || [],
+    style: t.style,
+    audience: t.audience,
+    thumbnailUrl: t.thumbnail_url || (slidesByTemplate[t.id]?.[0]?.previewUrl ?? ''),
+    aspectRatio: t.aspect_ratio || '4:5',
+    width: t.width || 1080,
+    height: t.height || 1350,
+    slideCount: t.slide_count || slidesByTemplate[t.id]?.length || 1,
+    isTrending: !!t.is_trending,
+    isNew: !!t.is_new,
+    sourceType: t.source_type || 'original',
+    sourceUrl: t.source_url,
+    sourcePlatform: t.source_platform,
+    attributionRequired: !!t.attribution_required,
+    licenseNotes: t.license_notes,
+    status: t.status || 'published',
+    useCount: t.use_count || 0,
+    createdBy: t.created_by,
+    createdAt: t.created_at || new Date().toISOString(),
+    updatedAt: t.updated_at || new Date().toISOString(),
+    publishedAt: t.published_at,
+    userId: t.user_id,
+    visibility: t.visibility,
+    creatorName: t.creator_name,
+    slides: slidesByTemplate[t.id] && slidesByTemplate[t.id].length > 0
+      ? slidesByTemplate[t.id]
+      : (t.id === AI_TOOLS_ID ? TEMPLATE_AI_TOOLS.slides : TEMPLATE_VIRAL_CAROUSELS.slides),
+  };
+}
+
 // ─── LIVE TEMPLATES SYNC (SUPABASE) ──────────────────────────────────────────
 
 export async function fetchLivePublishedTemplates(): Promise<Template[]> {
@@ -392,37 +433,7 @@ export async function fetchLivePublishedTemplates(): Promise<Template[]> {
 
       cachedSupabaseTemplates = dbTemplates
         .filter(t => !t.id.startsWith('tpl_'))
-        .map(t => ({
-          id: t.id,
-          name: t.name,
-          description: t.description || '',
-          category: t.category || 'Creator',
-          categoryId: t.category_id,
-          tags: t.tags || [],
-          style: t.style,
-          audience: t.audience,
-          thumbnailUrl: t.thumbnail_url || (slidesByTemplate[t.id]?.[0]?.previewUrl ?? ''),
-          aspectRatio: t.aspect_ratio || '4:5',
-          width: t.width || 1080,
-          height: t.height || 1350,
-          slideCount: t.slide_count || slidesByTemplate[t.id]?.length || 1,
-          isTrending: !!t.is_trending,
-          isNew: !!t.is_new,
-          sourceType: t.source_type || 'original',
-          sourceUrl: t.source_url,
-          sourcePlatform: t.source_platform,
-          attributionRequired: !!t.attribution_required,
-          licenseNotes: t.license_notes,
-          status: 'published',
-          useCount: t.use_count || 0,
-          createdBy: t.created_by,
-          createdAt: t.created_at || new Date().toISOString(),
-          updatedAt: t.updated_at || new Date().toISOString(),
-          publishedAt: t.published_at,
-          slides: slidesByTemplate[t.id] && slidesByTemplate[t.id].length > 0
-            ? slidesByTemplate[t.id]
-            : (t.id === AI_TOOLS_ID ? TEMPLATE_AI_TOOLS.slides : TEMPLATE_VIRAL_CAROUSELS.slides),
-        }));
+        .map(t => mapTemplateRowToTemplate(t, slidesByTemplate));
     }
   } catch (err) {
     console.warn('Live templates fetch failed, using seed & local templates:', err);

@@ -124,6 +124,14 @@ export default function TemplatePreviewPage() {
                 <span className="tag tag-accent">{template.category}</span>
                 {template.isTrending && <span className="tag tag-dark">Trending</span>}
               </div>
+              {template.userId && (
+                <div className="flex items-center gap-2 mt-3">
+                  <span className="tag" style={{ background: '#7C3AED', color: '#FFFFFF' }}>Community template</span>
+                  {template.creatorName && (
+                    <span className="text-[13px] text-[#6B6B67]">By {template.creatorName}</span>
+                  )}
+                </div>
+              )}
               <h1 className="text-[32px] font-bold tracking-[-0.02em] leading-tight mb-4 mt-3">
                 {template.name}
               </h1>
