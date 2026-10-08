@@ -4,7 +4,7 @@ import {
   Undo2, Redo2, Eye, EyeOff, Download, Save, ChevronLeft, ChevronRight,
   Plus, Copy, Trash2, Type, Image as ImageIcon, Square, Layers, Palette,
   AlignLeft, AlignCenter, AlignRight, Lock, Unlock,
-  RotateCcw, ArrowLeft, Sparkles, X, LayoutGrid, ArrowUp, ArrowDown, Wallpaper, Scissors, Loader2
+  RotateCcw, ArrowLeft, Sparkles, X, LayoutGrid, ArrowUp, ArrowDown, Wallpaper, Scissors, Loader2, Star
 } from 'lucide-react';
 import { useEditorStore } from '../hooks/useEditorStore';
 import { useAuth } from '../contexts/AuthContext';
@@ -13,6 +13,7 @@ import { exportSlideToFile } from '../lib/exportSlide';
 import SlidePreview from '../components/templates/SlidePreview';
 import TextPanel from '../components/editor/TextPanel';
 import UploadsPanel from '../components/editor/UploadsPanel';
+import IconsPanel from '../components/editor/IconsPanel';
 import ShapesPanel from '../components/editor/ShapesPanel';
 import ElementsPanel from '../components/editor/ElementsPanel';
 import BackgroundPanel from '../components/editor/BackgroundPanel';
@@ -679,7 +680,7 @@ export default function EditorPage() {
   const [showToast, setShowToast] = useState('');
 
   // Active Tool Panel
-  const [activeTool, setActiveTool] = useState<'text' | 'uploads' | 'shapes' | 'elements' | 'background' | 'brandKit' | 'slides'>('text');
+  const [activeTool, setActiveTool] = useState<'text' | 'uploads' | 'icons' | 'shapes' | 'elements' | 'background' | 'brandKit' | 'slides'>('text');
   // Mobile bottom sheet state
   const [mobileSheet, setMobileSheet] = useState<string | null>(null);
 
@@ -862,6 +863,7 @@ export default function EditorPage() {
   const toolTabs = [
     { id: 'text', label: 'Text', icon: Type },
     { id: 'uploads', label: 'Uploads', icon: ImageIcon },
+    { id: 'icons', label: 'Icons', icon: Star },
     { id: 'shapes', label: 'Shapes', icon: Square },
     { id: 'elements', label: 'Elements', icon: Layers },
     { id: 'background', label: 'Background', icon: Palette },
@@ -1001,6 +1003,16 @@ export default function EditorPage() {
               }}
               onSetBackground={(bg) => {
                 editor.updateSlideBackground(editor.state.currentSlideIndex, bg);
+              }}
+              onToast={toast}
+            />
+          )}
+
+          {activeTool === 'icons' && (
+            <IconsPanel
+              onAddElement={(el) => {
+                editor.addElement(editor.state.currentSlideIndex, el);
+                editor.setSelectedElement(el.id);
               }}
               onToast={toast}
             />
@@ -1258,6 +1270,16 @@ export default function EditorPage() {
                   }}
                   onSetBackground={(bg) => {
                     editor.updateSlideBackground(editor.state.currentSlideIndex, bg);
+                    setMobileSheet(null);
+                  }}
+                  onToast={toast}
+                />
+              )}
+              {mobileSheet === 'icons' && (
+                <IconsPanel
+                  onAddElement={(el) => {
+                    editor.addElement(editor.state.currentSlideIndex, el);
+                    editor.setSelectedElement(el.id);
                     setMobileSheet(null);
                   }}
                   onToast={toast}
