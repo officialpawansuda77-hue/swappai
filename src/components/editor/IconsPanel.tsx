@@ -1,15 +1,54 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Search, Loader2, Shapes } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { CanvasElement, ImageProperties } from '../../types';
 import {
-  searchIcons, iconSvgUrl, iconToDataUrl, prettyName,
+  searchIcons, iconThumbUrl, iconToDataUrl, prettyName,
   DEFAULT_ICONS, ICON_COLORS,
 } from '../../lib/iconLibrary';
 
 interface IconsPanelProps {
   onAddElement: (element: CanvasElement) => void;
   onToast: (msg: string) => void;
+}
+
+/**
+ * Grid thumbnail. Loads the SVG via fetch (same path as search — more
+ * reliable than hotlinking <img> on some mobile networks), shows a spinner
+ * while loading and a neutral glyph if it fails. Never a broken image.
+ */
+function IconThumb({ iconId, color }: { iconId: string; color: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    setSrc(null);
+    setFailed(false);
+    iconThumbUrl(iconId, color).then((url) => {
+      if (!alive) return;
+      if (url) setSrc(url);
+      else setFailed(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [iconId, color]);
+
+  if (failed) {
+    return <Shapes size={18} className="text-[rgba(247,245,240,0.25)]" />;
+  }
+  if (!src) {
+    return <Loader2 size={18} className="animate-spin text-[#FF5A00]" />;
+  }
+  return (
+    <img
+      src={src}
+      alt={prettyName(iconId)}
+      className="w-full h-full"
+      draggable={false}
+    />
+  );
 }
 
 export default function IconsPanel({ onAddElement, onToast }: IconsPanelProps) {
@@ -133,12 +172,7 @@ export default function IconsPanel({ onAddElement, onToast }: IconsPanelProps) {
             {addingId === iconId ? (
               <Loader2 size={18} className="animate-spin text-[#FF5A00]" />
             ) : (
-              <img
-                src={iconSvgUrl(iconId, color)}
-                alt={prettyName(iconId)}
-                className="w-full h-full"
-                loading="lazy"
-              />
+              <IconThumb iconId={iconId} color={color} />
             )}
           </button>
         ))}
