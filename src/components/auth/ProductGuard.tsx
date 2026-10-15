@@ -24,7 +24,7 @@ export function ProductGuard({ children }: ProductGuardProps) {
     );
   }
 
-  const hasLocalAdmin = typeof window !== 'undefined' && !!localStorage.getItem('swapp_admin_session');
+  const hasLocalAdmin = typeof window !== 'undefined' && false;
 
   // If user is not authenticated, redirect to /pricing so they choose a plan first
   if (!user && !profile && !hasLocalAdmin) {

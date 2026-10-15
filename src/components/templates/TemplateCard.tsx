@@ -60,7 +60,7 @@ export default function TemplateCard({
         {firstSlide ? (
           <SlidePreview
             slide={firstSlide}
-            scale={scale}
+            autoScale
             className="w-full h-full"
             style={{ width: '100%', height: '100%' }}
           />

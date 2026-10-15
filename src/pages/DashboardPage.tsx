@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Clock, Layers, Sparkles, ArrowRight, ShieldCheck, AlertCircle, X } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Plus, Clock, Layers, Sparkles, ArrowRight, ShieldCheck, AlertCircle, X, Zap, CheckCircle2, ShoppingBag } from 'lucide-react';
 import Navbar from '../components/marketing/Navbar';
 import SlidePreview from '../components/templates/SlidePreview';
 import TemplateCard from '../components/templates/TemplateCard';
 import { getPublishedTemplates, fetchLivePublishedTemplates } from '../lib/templates';
 import { useAuth } from '../contexts/AuthContext';
-import { getUserSubscription, UserSubscription, PLANS } from '../lib/subscription';
+import { getUserSubscription, UserSubscription, PLANS, createDodoCheckoutSession } from '../lib/subscription';
 import { getUserProjects } from '../lib/projects';
+import { apiFetch } from '../lib/apiClient';
 import { Project } from '../types';
 
 function timeAgo(dateStr: string): string {
@@ -21,20 +22,75 @@ function timeAgo(dateStr: string): string {
   return 'Just now';
 }
 
+interface ProjectCardProps {
+  project: Project;
+  templates: ReturnType<typeof getPublishedTemplates>;
+}
+
+function ProjectCard({ project, templates }: ProjectCardProps) {
+  const tpl = templates.find(t => t.id === project.templateId);
+  const slide = project.slides?.[0] || tpl?.slides[0];
+  const slideWidth = slide?.width || 1080;
+  const slideHeight = slide?.height || 1350;
+  const aspectRatio = `${slideWidth} / ${slideHeight}`;
+
+  return (
+    <Link
+      to={`/editor/${project.id}`}
+      className="template-card no-underline block group bg-white rounded-2xl overflow-hidden border border-[rgba(17,17,17,0.08)] shadow-sm hover:shadow-md transition-all duration-200"
+    >
+      <div className="relative overflow-hidden w-full bg-[rgba(17,17,17,0.04)]" style={{ aspectRatio }}>
+        {slide ? (
+          <SlidePreview
+            slide={slide}
+            autoScale
+            className="w-full h-full"
+            style={{ width: '100%', height: '100%' }}
+          />
+        ) : (
+          <div className="w-full h-full bg-[rgba(17,17,17,0.05)] flex items-center justify-center">
+            <Layers size={24} className="text-[#6B6B67]" />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100 backdrop-blur-[1px]">
+          <span className="btn-primary btn-sm shadow-md scale-95 group-hover:scale-100 transition-transform">
+            Open Editor →
+          </span>
+        </div>
+      </div>
+      <div className="p-4 bg-white">
+        <p className="text-[14px] font-semibold text-[#111111] mb-1 truncate">{project.name}</p>
+        <div className="flex items-center gap-1.5 text-[12px] text-[#6B6B67]">
+          <Clock size={11} />
+          <span>{timeAgo(project.updatedAt)}</span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 export default function DashboardPage() {
-  const { profile, user, loading } = useAuth();
+  const { profile, user, loading, refreshProfile } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [, setReload] = useState(0);
   const templates = getPublishedTemplates();
   const trending = templates.filter(t => t.isTrending).slice(0, 4);
 
   const [sub, setSub] = useState<UserSubscription | null>(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
+  const [showExtraGenModal, setShowExtraGenModal] = useState(false);
+  const [purchasingExtra, setPurchasingExtra] = useState(false);
+  const [extraGenError, setExtraGenError] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
+  const [paymentBanner, setPaymentBanner] = useState<string | null>(null);
+
+  const isPaymentSuccess = searchParams.get('payment') === 'success' || searchParams.get('checkout') === 'success';
 
   useEffect(() => {
     fetchLivePublishedTemplates().then(() => setReload(r => r + 1));
-    if (!loading && !user && !profile && !localStorage.getItem('swapp_admin_session')) {
+    if (!loading && !user && !profile) {
       navigate('/pricing', { replace: true });
       return;
     }
@@ -42,12 +98,39 @@ export default function DashboardPage() {
     if (uid) {
       getUserSubscription(uid).then(setSub);
       getUserProjects(uid).then(setProjects);
+
+      // If returning from Dodo Checkout, verify server-side
+      if (isPaymentSuccess) {
+        setVerifyingPayment(true);
+        apiFetch<{ verified: boolean; plan: string }>('/api/dodo/verify-subscription', { timeoutMs: 20_000 })
+          .then(data => {
+            if (data.verified) {
+              setPaymentBanner(`Payment confirmed! Your ${data.plan.toUpperCase()} subscription is active.`);
+              getUserSubscription(uid).then(setSub);
+              refreshProfile();
+            } else {
+              setPaymentBanner('Checkout completed. Your subscription will sync via webhook momentarily.');
+              getUserSubscription(uid).then(setSub);
+            }
+          })
+          .catch(() => {
+            getUserSubscription(uid).then(setSub);
+          })
+          .finally(() => {
+            setVerifyingPayment(false);
+          });
+      }
+    } else {
+      getUserProjects('anonymous').then(setProjects);
     }
-  }, [user, profile, loading, navigate]);
+  }, [user, profile, loading, navigate, isPaymentSuccess, refreshProfile]);
 
   const currentPlan = sub ? PLANS[sub.planId] || PLANS.starter : PLANS.starter;
-  const usagePercent = sub ? Math.min(100, Math.round((sub.generationsUsed / sub.monthlyGenerations) * 100)) : 0;
-  const hasGenerationsLeft = sub ? sub.generationsUsed < sub.monthlyGenerations : true;
+  const totalLimit = (sub ? sub.monthlyGenerations : currentPlan.monthlyGenerations) + (sub?.extraGenerations || 0);
+  const usedGenerations = sub ? sub.generationsUsed : 0;
+  const remainingGenerations = Math.max(0, totalLimit - usedGenerations);
+  const usagePercent = Math.min(100, Math.round((usedGenerations / totalLimit) * 100));
+  const hasGenerationsLeft = remainingGenerations > 0;
 
   const handleCreateClick = (e: React.MouseEvent) => {
     if (!hasGenerationsLeft) {
@@ -55,6 +138,25 @@ export default function DashboardPage() {
       setShowLimitModal(true);
     } else {
       navigate('/create');
+    }
+  };
+
+  const handleBuyExtraGenerations = async () => {
+    setExtraGenError(null);
+    setPurchasingExtra(true);
+
+    try {
+      const returnUrl = `${window.location.origin}/dashboard?payment=success&extra=15`;
+      const { checkoutUrl } = await createDodoCheckoutSession('extra_generations', returnUrl);
+      if (checkoutUrl) {
+        window.location.href = checkoutUrl;
+      }
+    } catch (err: any) {
+      setExtraGenError(
+        err.message ||
+          'Dodo Extra Generations product has not yet been configured. Please specify DODO_EXTRA_GENERATIONS_PRODUCT_ID in server environment.'
+      );
+      setPurchasingExtra(false);
     }
   };
 
@@ -66,7 +168,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!user) {
+  if (!user && !profile) {
     return null;
   }
 
@@ -76,6 +178,29 @@ export default function DashboardPage() {
 
       <div className="pt-[80px]">
         <div className="container-wide py-12">
+          {/* Payment Success Notification Banner */}
+          {verifyingPayment && (
+            <div className="mb-8 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-[14px] flex items-center gap-3">
+              <div className="w-5 h-5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+              <span>Verifying your Dodo Payments subscription status server-side...</span>
+            </div>
+          )}
+
+          {paymentBanner && (
+            <div className="mb-8 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-[14px] flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 size={18} className="text-emerald-600 flex-shrink-0" />
+                <span className="font-semibold">{paymentBanner}</span>
+              </div>
+              <button
+                onClick={() => setPaymentBanner(null)}
+                className="text-emerald-700 hover:text-emerald-900 text-[13px] font-bold"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
           {/* Header & Plan Status Banner */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-12">
             <div>
@@ -88,15 +213,37 @@ export default function DashboardPage() {
               <p className="text-[16px] text-[#6B6B67]">What are you publishing today?</p>
             </div>
 
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleCreateClick}
-                className="btn-accent flex items-center gap-2 !py-3.5 !px-6 cursor-pointer"
-              >
-                <Plus size={16} />
-                Create Carousel
-              </button>
+            <div className="flex items-center gap-3 flex-wrap">
+              {hasGenerationsLeft ? (
+                <button
+                  type="button"
+                  onClick={handleCreateClick}
+                  className="btn-accent flex items-center gap-2 !py-3.5 !px-6 cursor-pointer"
+                >
+                  <Plus size={16} />
+                  Create Carousel
+                </button>
+              ) : (
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    disabled
+                    title="Monthly carousel limit reached. Get more generations to continue creating."
+                    className="py-3.5 px-6 rounded-full bg-[rgba(17,17,17,0.08)] text-[#6B6B67] font-bold text-[14px] cursor-not-allowed opacity-60 flex items-center gap-2"
+                  >
+                    <Plus size={16} />
+                    Create Carousel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowExtraGenModal(true)}
+                    className="py-3.5 px-6 rounded-full bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-[14px] transition-all flex items-center gap-2 shadow-lg shadow-[#FF5A00]/25 cursor-pointer"
+                  >
+                    <Zap size={16} />
+                    Get More Generations
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -109,8 +256,12 @@ export default function DashboardPage() {
                   <span className="text-[12px] font-bold text-[#6B6B67] uppercase tracking-wider">
                     Current Plan
                   </span>
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FF5A00]/10 text-[#FF5A00]">
-                    Active
+                  <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                    sub?.status === 'active'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-amber-100 text-amber-700'
+                  }`}>
+                    {sub?.status === 'active' ? 'Active' : (sub?.status || 'Active')}
                   </span>
                 </div>
                 <div className="flex items-baseline gap-2">
@@ -123,12 +274,12 @@ export default function DashboardPage() {
                 <p className="text-[13px] text-[#6B6B67] mt-1">{currentPlan.description}</p>
               </div>
 
-              {/* Monthly Allowance & Progress */}
+              {/* Monthly Allowance & Progress Meter */}
               <div className="md:col-span-5 border-b md:border-b-0 md:border-r border-[rgba(17,17,17,0.08)] pb-5 md:pb-0 md:pr-6">
                 <div className="flex items-center justify-between text-[13px] mb-2">
-                  <span className="font-bold text-[#111111]">Monthly Carousel Allowance</span>
-                  <span className="font-bold text-[#FF5A00]">
-                    {sub ? sub.generationsUsed : 0} / {sub ? sub.monthlyGenerations : currentPlan.monthlyGenerations} used
+                  <span className="font-bold text-[#111111] text-[14px]">Carousels</span>
+                  <span className="font-extrabold text-[#FF5A00] text-[14px]">
+                    {usedGenerations} / {totalLimit} used
                   </span>
                 </div>
 
@@ -142,20 +293,43 @@ export default function DashboardPage() {
                   />
                 </div>
 
-                <div className="flex justify-between items-center text-[11.5px] text-[#6B6B67] mt-2">
-                  <span>
-                    {sub
-                      ? Math.max(0, sub.monthlyGenerations - sub.generationsUsed)
-                      : currentPlan.monthlyGenerations}{' '}
-                    generations remaining
+                <div className="flex justify-between items-center text-[12px] mt-2.5">
+                  <span className={`font-semibold ${remainingGenerations === 0 ? 'text-red-600' : 'text-[#111111]'}`}>
+                    {remainingGenerations} remaining
                   </span>
-                  <span>Resets on 1st of month</span>
+                  <span className="text-[#6B6B67] text-[11px]">Resets on billing cycle</span>
                 </div>
+
+                {/* Limit reached warning alert in card */}
+                {!hasGenerationsLeft && (
+                  <div className="mt-3.5 p-3 rounded-xl bg-red-50 border border-red-200/80 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-red-600 text-[12px] font-bold">
+                      <AlertCircle size={15} className="flex-shrink-0" />
+                      <span>Monthly carousel limit reached.</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowExtraGenModal(true)}
+                      className="text-[12px] font-extrabold text-[#FF5A00] hover:underline"
+                    >
+                      Get More Generations →
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {/* Upgrade CTA */}
-              <div className="md:col-span-3 flex flex-col justify-center items-start md:items-end">
-                {currentPlan.id !== 'studio' ? (
+              {/* Upgrade CTA / Extra Generations CTA */}
+              <div className="md:col-span-3 flex flex-col justify-center items-start md:items-end gap-2.5">
+                {!hasGenerationsLeft ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowExtraGenModal(true)}
+                    className="w-full md:w-auto py-3 px-5 rounded-full bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-[13.5px] transition-all flex items-center justify-center gap-1.5 shadow-md shadow-[#FF5A00]/20 cursor-pointer"
+                  >
+                    <Zap size={14} />
+                    <span>Get More Generations</span>
+                  </button>
+                ) : currentPlan.id !== 'studio' ? (
                   <Link
                     to="/pricing"
                     className="w-full md:w-auto py-3 px-5 rounded-full bg-[rgba(17,17,17,0.05)] hover:bg-[#FF5A00] text-[#111111] hover:text-white font-bold text-[13.5px] transition-all flex items-center justify-center gap-1.5"
@@ -166,7 +340,7 @@ export default function DashboardPage() {
                 ) : (
                   <div className="flex items-center gap-1.5 text-emerald-600 font-semibold text-[13px]">
                     <ShieldCheck size={16} />
-                    <span>Top Tier Active</span>
+                    <span>Studio Plan Active</span>
                   </div>
                 )}
               </div>
@@ -181,43 +355,18 @@ export default function DashboardPage() {
                 <Layers size={32} className="mx-auto text-[#6B6B67] mb-4" />
                 <p className="text-[17px] font-medium mb-2">No projects yet</p>
                 <p className="text-[15px] text-[#6B6B67] mb-6">Start by browsing templates or creating from scratch.</p>
-                <button onClick={handleCreateClick} className="btn-primary">
+                <button
+                  onClick={handleCreateClick}
+                  className={`btn-primary ${!hasGenerationsLeft ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
                   Create your first carousel
                 </button>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                {projects.map(project => {
-                  const tpl = templates.find(t => t.id === project.templateId);
-                  const slide = project.slides?.[0] || tpl?.slides[0];
-                  return (
-                    <Link
-                      key={project.id}
-                      to={`/editor/${project.id}`}
-                      className="template-card no-underline block group bg-white rounded-2xl overflow-hidden border border-[rgba(17,17,17,0.08)] shadow-sm hover:shadow-md transition-shadow"
-                    >
-                      <div className="relative overflow-hidden" style={{ aspectRatio: '4/5' }}>
-                        {slide ? (
-                          <SlidePreview slide={slide} scale={220 / 1080} />
-                        ) : (
-                          <div className="w-full h-full bg-[rgba(17,17,17,0.05)] flex items-center justify-center">
-                            <Layers size={24} className="text-[#6B6B67]" />
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-[rgba(17,17,17,0.0)] group-hover:bg-[rgba(17,17,17,0.08)] transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                          <span className="btn-primary btn-sm">Open →</span>
-                        </div>
-                      </div>
-                      <div className="p-4">
-                        <p className="text-[14px] font-semibold text-[#111111] mb-1 truncate">{project.name}</p>
-                        <div className="flex items-center gap-1.5 text-[12px] text-[#6B6B67]">
-                          <Clock size={11} />
-                          <span>{timeAgo(project.updatedAt)}</span>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
+                {projects.map(project => (
+                  <ProjectCard key={project.id} project={project} templates={templates} />
+                ))}
               </div>
             )}
           </section>
@@ -240,10 +389,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Generation Limit Reached Modal */}
+      {/* Monthly Limit Reached Modal */}
       {showLimitModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl p-8 max-w-[440px] w-full text-center relative shadow-2xl border border-[rgba(0,0,0,0.08)] animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl p-8 max-w-[460px] w-full text-center relative shadow-2xl border border-[rgba(0,0,0,0.08)] animate-in zoom-in-95 duration-200">
             <button
               onClick={() => setShowLimitModal(false)}
               className="absolute top-5 right-5 p-2 rounded-full text-[#6B6B67] hover:text-[#111111] hover:bg-[rgba(0,0,0,0.05)]"
@@ -253,23 +402,120 @@ export default function DashboardPage() {
             <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
               <AlertCircle size={24} />
             </div>
-            <h3 className="text-[22px] font-bold mb-2">Monthly Limit Reached</h3>
+            <h3 className="text-[22px] font-bold mb-2">Monthly carousel limit reached.</h3>
             <p className="text-[14px] text-[#6B6B67] mb-6 leading-relaxed">
-              You've used all {sub?.monthlyGenerations} carousel generations included in your {currentPlan.name} plan for this month. Upgrade your plan to continue creating!
+              You've used all <strong>{usedGenerations} of {totalLimit}</strong> carousel generations included in your {currentPlan.name} allowance for this billing month.
             </p>
             <div className="flex flex-col gap-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLimitModal(false);
+                  setShowExtraGenModal(true);
+                }}
+                className="w-full py-3.5 px-6 rounded-full bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-[14px] transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#FF5A00]/25 cursor-pointer"
+              >
+                <Zap size={16} />
+                Get More Generations
+              </button>
               <Link
                 to="/pricing"
-                className="w-full py-3.5 px-6 rounded-full bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-[14px] transition-all text-center shadow-lg shadow-[#FF5A00]/25"
+                className="w-full py-3 px-6 rounded-full border border-[rgba(17,17,17,0.15)] text-[#111111] font-semibold text-[14px] text-center hover:bg-[rgba(0,0,0,0.02)]"
               >
-                Upgrade Plan
+                Upgrade Subscription Plan
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Extra Generations Purchase Modal */}
+      {showExtraGenModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl p-8 max-w-[480px] w-full text-left relative shadow-2xl border border-[rgba(0,0,0,0.08)] animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => {
+                setShowExtraGenModal(false);
+                setExtraGenError(null);
+              }}
+              className="absolute top-5 right-5 p-2 rounded-full text-[#6B6B67] hover:text-[#111111] hover:bg-[rgba(0,0,0,0.05)]"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-2xl bg-[#FF5A00]/10 text-[#FF5A00] flex items-center justify-center">
+                <Sparkles size={20} />
+              </div>
+              <div>
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#FF5A00]">
+                  ADDITIONAL USAGE
+                </span>
+                <h3 className="text-[20px] font-bold">Get More Generations</h3>
+              </div>
+            </div>
+
+            <p className="text-[14px] text-[#6B6B67] mb-6 leading-relaxed">
+              Add extra carousel generations to your account. Extra generations do not expire at the end of the billing month and are consumed after your monthly quota.
+            </p>
+
+            {extraGenError && (
+              <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-[13px] leading-relaxed">
+                <div className="flex items-center gap-2 font-bold mb-1 text-amber-800">
+                  <AlertCircle size={15} />
+                  <span>Dodo Product Configuration Needed</span>
+                </div>
+                <p className="text-[12.5px]">{extraGenError}</p>
+                <div className="mt-3 pt-3 border-t border-amber-200/80 text-[12px] text-amber-800">
+                  <p className="font-semibold mb-1">To enable extra generations in Dodo Payments:</p>
+                  <p>1. Create a One-Time product in Dodo Payments (e.g. "15 Extra Carousel Generations" - $5.00)</p>
+                  <p>2. Set <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-[11px]">DODO_EXTRA_GENERATIONS_PRODUCT_ID=pdt_...</code> in your server environment variables.</p>
+                </div>
+              </div>
+            )}
+
+            {/* Extra generations option card */}
+            <div className="p-5 rounded-2xl border-2 border-[#FF5A00] bg-orange-50/20 mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-bold text-[16px] text-[#111111]">15 Extra Carousel Generations</h4>
+                <span className="text-[20px] font-black text-[#FF5A00]">$5.00</span>
+              </div>
+              <p className="text-[13px] text-[#6B6B67] mb-4">
+                Instant top-up for 15 carousel generations. One-time payment via Dodo Payments.
+              </p>
+              <button
+                type="button"
+                onClick={handleBuyExtraGenerations}
+                disabled={purchasingExtra}
+                className="w-full py-3.5 px-6 rounded-full bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-[14px] transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#FF5A00]/25 disabled:opacity-50 cursor-pointer"
+              >
+                {purchasingExtra ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Opening Dodo Checkout...</span>
+                  </>
+                ) : (
+                  <>
+                    <ShoppingBag size={16} />
+                    <span>Purchase Extra Generations</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="flex justify-between items-center pt-2">
+              <Link
+                to="/pricing"
+                className="text-[13px] font-bold text-[#FF5A00] hover:underline"
+              >
+                Or upgrade your subscription plan →
               </Link>
               <button
                 type="button"
-                onClick={() => setShowLimitModal(false)}
-                className="w-full py-3 px-6 rounded-full border border-[rgba(17,17,17,0.15)] text-[#111111] font-semibold text-[14px]"
+                onClick={() => setShowExtraGenModal(false)}
+                className="text-[13px] text-[#6B6B67] hover:text-[#111111]"
               >
-                Close
+                Cancel
               </button>
             </div>
           </div>

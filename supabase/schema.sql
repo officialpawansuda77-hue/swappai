@@ -15,6 +15,9 @@ CREATE TABLE IF NOT EXISTS profiles (
   subscription_status       TEXT NOT NULL DEFAULT 'active',
   monthly_generation_limit  INT NOT NULL DEFAULT 5,
   generations_used          INT NOT NULL DEFAULT 0,
+  extra_generations         INT NOT NULL DEFAULT 0,
+  dodo_subscription_id      TEXT,
+  dodo_customer_id          TEXT,
   period_start              TIMESTAMPTZ DEFAULT now(),
   period_end                TIMESTAMPTZ DEFAULT (now() + interval '1 month'),
   created_at               TIMESTAMPTZ DEFAULT now(),
@@ -302,3 +305,89 @@ CREATE TRIGGER templates_updated_at         BEFORE UPDATE ON templates         F
 CREATE TRIGGER template_slides_updated_at   BEFORE UPDATE ON template_slides   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER project_slides_updated_at    BEFORE UPDATE ON project_slides    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER profiles_updated_at          BEFORE UPDATE ON profiles          FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- ============================================================
+-- DODO PAYMENTS & WEBHOOKS
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS dodo_webhook_events (
+  id           TEXT PRIMARY KEY,
+  event_type   TEXT NOT NULL,
+  data         JSONB,
+  processed_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE dodo_webhook_events ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admins read dodo webhook events"
+  ON dodo_webhook_events FOR SELECT
+  TO authenticated
+  USING (is_admin());
+
+CREATE OR REPLACE FUNCTION public.consume_carousel_generation(p_user_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  v_profile RECORD;
+  v_limit INT;
+  v_used INT;
+  v_remaining INT;
+BEGIN
+  SELECT * INTO v_profile
+  FROM public.profiles
+  WHERE user_id = p_user_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Profile not found');
+  END IF;
+
+  IF v_profile.subscription_status IN ('canceled', 'expired', 'failed') AND v_profile.period_end < now() THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Subscription is no longer active. Please renew your plan.',
+      'status', v_profile.subscription_status
+    );
+  END IF;
+
+  IF v_profile.period_end IS NOT NULL AND v_profile.period_end < now() AND v_profile.subscription_status = 'active' THEN
+    UPDATE public.profiles
+    SET generations_used = 0,
+        period_start = now(),
+        period_end = now() + interval '1 month',
+        updated_at = now()
+    WHERE user_id = p_user_id
+    RETURNING * INTO v_profile;
+  END IF;
+
+  v_limit := COALESCE(v_profile.monthly_generation_limit, 5) + COALESCE(v_profile.extra_generations, 0);
+  v_used := COALESCE(v_profile.generations_used, 0);
+  v_remaining := v_limit - v_used;
+
+  IF v_remaining <= 0 THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Monthly carousel limit reached',
+      'used', v_used,
+      'limit', v_limit,
+      'remaining', 0
+    );
+  END IF;
+
+  UPDATE public.profiles
+  SET generations_used = v_used + 1,
+      updated_at = now()
+  WHERE user_id = p_user_id
+  RETURNING * INTO v_profile;
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'used', v_used + 1,
+    'limit', v_limit,
+    'remaining', v_limit - (v_used + 1)
+  );
+END;
+$$;

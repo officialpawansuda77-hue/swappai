@@ -1,8 +1,12 @@
 // Vercel Serverless Function: /api/deconstruct-slide
-// Calls Google Gemini 2.5 Flash on the server.
-// Never exposes GEMINI_API_KEY to client-side code.
+// Calls Google Gemini on the server. Never exposes GEMINI_API_KEY to client-side code.
+// ADMIN-ONLY (used by the admin template importer). User-facing reconstruction
+// goes through /api/carousel/analyze, which is credit-metered.
 
-import type { IncomingMessage, ServerResponse } from 'http';
+import { route, readJson, HttpError } from './_lib/http.js';
+import { requireAdmin } from './_lib/auth.js';
+
+const MAX_BASE64_CHARS = 14_000_000; // ~10 MB image
 
 const SYSTEM_PROMPT = `You are an expert graphic designer and document layout reverse-engineering AI.
 Your task is to analyze an uploaded carousel slide image (designed for an Instagram/LinkedIn 4:5 canvas at 1080x1350 pixels) and deconstruct it into clean, distinct, editable visual layers.
@@ -65,87 +69,45 @@ CRITICAL RULES:
 4. Colors must be precise 6-character hex codes (e.g. "#FF5A00", "#1E1E1E").
 5. Only return the JSON object, with no markdown code blocks or surrounding commentary.`;
 
-export default async function handler(req: any, res: any) {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+export default route(['POST'], async (req, res) => {
+  await requireAdmin(req);
 
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({
-      error: 'GEMINI_API_KEY is not configured in backend environment variables.',
-    });
+  if (!apiKey) throw new HttpError(500, 'server_misconfigured', 'AI is not configured.');
+
+  const { imageBase64, mimeType = 'image/png' } = readJson<{ imageBase64?: string; mimeType?: string }>(req);
+  if (!imageBase64 || typeof imageBase64 !== 'string') {
+    throw new HttpError(400, 'invalid_image', 'Missing imageBase64 in request body.');
   }
+  if (imageBase64.length > MAX_BASE64_CHARS) throw new HttpError(413, 'file_too_large', 'Image is too large.');
+  if (!['image/png', 'image/jpeg', 'image/webp'].includes(mimeType)) {
+    throw new HttpError(415, 'unsupported_format', 'Use PNG, JPG or WEBP.');
+  }
+
+  const cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
+  const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent';
+
+  const geminiResponse = await fetch(geminiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: SYSTEM_PROMPT }, { inline_data: { mime_type: mimeType, data: cleanBase64 } }] }],
+      generationConfig: { response_mime_type: 'application/json', temperature: 0.1 },
+    }),
+  });
+
+  if (!geminiResponse.ok) {
+    console.error('[deconstruct-slide] Gemini error', geminiResponse.status, await geminiResponse.text());
+    throw new HttpError(geminiResponse.status === 429 ? 429 : 502, 'ai_failed', 'AI analysis failed. Please try again.');
+  }
+
+  const geminiData = await geminiResponse.json();
+  const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!rawText) throw new HttpError(502, 'ai_empty', 'No content received from the AI model.');
 
   try {
-    let body = req.body;
-    if (typeof body === 'string') {
-      try {
-        body = JSON.parse(body);
-      } catch {
-        // fallback
-      }
-    }
-
-    const { imageBase64, mimeType = 'image/png' } = body || {};
-    if (!imageBase64) {
-      return res.status(400).json({ error: 'Missing imageBase64 in request body.' });
-    }
-
-    const cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
-
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
-
-    const geminiResponse = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              { text: SYSTEM_PROMPT },
-              {
-                inline_data: {
-                  mime_type: mimeType,
-                  data: cleanBase64,
-                },
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          response_mime_type: 'application/json',
-          temperature: 0.1,
-        },
-      }),
-    });
-
-    if (!geminiResponse.ok) {
-      const errText = await geminiResponse.text();
-      return res.status(geminiResponse.status).json({
-        error: `Gemini API error (${geminiResponse.status}): ${errText}`,
-      });
-    }
-
-    const geminiData = await geminiResponse.json();
-    const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!rawText) {
-      return res.status(502).json({ error: 'No content received from Gemini Vision model.' });
-    }
-
-    const parsed = JSON.parse(rawText.trim());
-    return res.status(200).json(parsed);
-  } catch (err: any) {
-    return res.status(500).json({ error: err.message || 'Internal server error' });
+    res.status(200).json(JSON.parse(rawText.trim()));
+  } catch {
+    throw new HttpError(502, 'ai_invalid_json', 'AI returned an invalid response. Please retry.');
   }
-}
+});

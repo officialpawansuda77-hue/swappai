@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowRight, Sparkles, AlertCircle, X } from 'lucide-react';
+import { ArrowRight, Sparkles, AlertCircle, X, Zap } from 'lucide-react';
 import Navbar from '../components/marketing/Navbar';
 import { ToneType, AudienceType, AIGenerationParams } from '../types';
 import { getPublishedTemplates } from '../lib/templates';
-import TemplateCard from '../components/templates/TemplateCard';
 import { useAuth } from '../contexts/AuthContext';
 import { canGenerateCarousel, recordCarouselGeneration } from '../lib/subscription';
 
@@ -13,7 +12,6 @@ const AUDIENCES: AudienceType[] = ['creator', 'founder', 'marketer', 'business',
 const SLIDE_COUNTS = [5, 6, 7, 8, 10];
 
 function generateDemoSlides(params: AIGenerationParams) {
-  // Demo generation — returns template-based slides
   const templates = getPublishedTemplates();
   const match = templates.find(t =>
     params.topic.toLowerCase().includes(t.category.toLowerCase()) ||
@@ -31,12 +29,24 @@ export default function CreatePage() {
   const [slideCount, setSlideCount] = useState(7);
   const [loading, setLoading] = useState(false);
   const [limitError, setLimitError] = useState<string | null>(null);
+  const [generationsLeft, setGenerationsLeft] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (!authLoading && !user && !profile) {
       navigate('/pricing', { replace: true });
+      return;
     }
-  }, [authLoading, user, navigate]);
+
+    const uid = user?.id || profile?.userId;
+    if (uid) {
+      canGenerateCarousel(uid).then(check => {
+        setGenerationsLeft(check.remaining);
+        if (!check.allowed) {
+          setLimitError(check.reason || 'Monthly carousel limit reached. Get more generations to continue creating.');
+        }
+      });
+    }
+  }, [authLoading, user, profile, navigate]);
 
   if (authLoading) {
     return (
@@ -53,28 +63,39 @@ export default function CreatePage() {
   const handleGenerate = async () => {
     if (!topic.trim()) return;
 
-    const uid = user?.id || profile?.userId || 'demo-user';
+    const uid = user?.id || profile?.userId;
+    if (!uid) {
+      navigate('/login');
+      return;
+    }
+
+    // 1. Pre-check allowance
     const check = await canGenerateCarousel(uid);
     if (!check.allowed) {
-      setLimitError(check.reason || "You've reached your monthly carousel limit. Upgrade your plan to continue creating.");
+      setLimitError(check.reason || 'Monthly carousel limit reached. Get more generations to continue creating.');
       return;
     }
 
     setLoading(true);
 
-    // Record generation
-    await recordCarouselGeneration(uid);
+    // 2. Server-side atomic consumption
+    const deduction = await recordCarouselGeneration(uid);
+    if (!deduction.success) {
+      setLoading(false);
+      setLimitError(deduction.error || 'Monthly carousel limit reached.');
+      return;
+    }
 
     // Simulate generation delay
-    await new Promise(r => setTimeout(r, 1200));
+    await new Promise(r => setTimeout(r, 1000));
 
-    // Demo: use matched template as base
     const params: AIGenerationParams = { topic, tone, audience, slideCount };
     const tpl = generateDemoSlides(params);
 
-    // Navigate to editor with the template
     navigate(`/editor/new?template=${tpl.id}&topic=${encodeURIComponent(topic)}`);
   };
+
+  const isExhausted = generationsLeft !== null && generationsLeft <= 0;
 
   return (
     <div className="bg-[#F7F5F0] min-h-screen">
@@ -87,9 +108,28 @@ export default function CreatePage() {
           <h1 className="text-[clamp(36px,5vw,60px)] font-bold tracking-[-0.025em] leading-tight mb-4">
             What do you want<br />to post about?
           </h1>
-          <p className="text-body-lg mb-12">
+          <p className="text-body-lg mb-8">
             Enter your topic and we'll generate an editable carousel structure for you.
           </p>
+
+          {/* Limit reached warning banner */}
+          {isExhausted && (
+            <div className="mb-8 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-900 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <AlertCircle size={20} className="text-red-600 flex-shrink-0" />
+                <div>
+                  <p className="font-bold text-[14px]">Monthly carousel limit reached.</p>
+                  <p className="text-[13px] text-red-700">You have used all monthly carousel generations for this billing period.</p>
+                </div>
+              </div>
+              <Link
+                to="/pricing"
+                className="py-2 px-4 rounded-full bg-[#FF5A00] text-white text-[12.5px] font-bold hover:bg-[#e04f00] flex-shrink-0"
+              >
+                Get More Generations
+              </Link>
+            </div>
+          )}
 
           <div className="bg-white rounded-2xl border border-[rgba(17,17,17,0.08)] p-8 shadow-sm">
             {/* Topic */}
@@ -101,6 +141,7 @@ export default function CreatePage() {
                 placeholder="e.g. 7 AI tools for small businesses..."
                 className="input-field !h-24 resize-none"
                 maxLength={200}
+                disabled={isExhausted}
               />
               <p className="text-[12px] text-[#6B6B67] mt-1 text-right">{topic.length}/200</p>
             </div>
@@ -113,12 +154,13 @@ export default function CreatePage() {
                   {TONES.map(t => (
                     <button
                       key={t}
+                      disabled={isExhausted}
                       onClick={() => setTone(t)}
                       className={`px-3 py-2 rounded-lg text-[13px] font-medium text-left transition-all capitalize ${
                         tone === t
                           ? 'bg-[#111111] text-white'
                           : 'bg-[#F7F5F0] text-[#6B6B67] hover:text-[#111111] hover:bg-[rgba(17,17,17,0.06)]'
-                      }`}
+                      } ${isExhausted ? 'opacity-60 cursor-not-allowed' : ''}`}
                     >
                       {t}
                     </button>
@@ -133,12 +175,13 @@ export default function CreatePage() {
                   {AUDIENCES.map(a => (
                     <button
                       key={a}
+                      disabled={isExhausted}
                       onClick={() => setAudience(a)}
                       className={`px-3 py-2 rounded-lg text-[13px] font-medium text-left transition-all capitalize ${
                         audience === a
                           ? 'bg-[#111111] text-white'
                           : 'bg-[#F7F5F0] text-[#6B6B67] hover:text-[#111111] hover:bg-[rgba(17,17,17,0.06)]'
-                      }`}
+                      } ${isExhausted ? 'opacity-60 cursor-not-allowed' : ''}`}
                     >
                       {a}
                     </button>
@@ -153,12 +196,13 @@ export default function CreatePage() {
                   {SLIDE_COUNTS.map(n => (
                     <button
                       key={n}
+                      disabled={isExhausted}
                       onClick={() => setSlideCount(n)}
                       className={`px-3 py-2 rounded-lg text-[13px] font-medium text-left transition-all ${
                         slideCount === n
                           ? 'bg-[#111111] text-white'
                           : 'bg-[#F7F5F0] text-[#6B6B67] hover:text-[#111111] hover:bg-[rgba(17,17,17,0.06)]'
-                      }`}
+                      } ${isExhausted ? 'opacity-60 cursor-not-allowed' : ''}`}
                     >
                       {n} slides
                     </button>
@@ -167,26 +211,47 @@ export default function CreatePage() {
               </div>
             </div>
 
-            <button
-              onClick={handleGenerate}
-              disabled={!topic.trim() || loading}
-              className={`btn-accent w-full flex items-center justify-center gap-2 !py-4 text-[15px] font-semibold transition-all ${
-                !topic.trim() || loading ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-            >
-              {loading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Generating carousel...
-                </>
-              ) : (
-                <>
-                  <Sparkles size={17} />
-                  Generate carousel
-                  <ArrowRight size={17} />
-                </>
-              )}
-            </button>
+            {isExhausted ? (
+              <div className="space-y-3">
+                <button
+                  disabled
+                  className="w-full py-4 rounded-full bg-[rgba(17,17,17,0.1)] text-[#6B6B67] font-bold text-[15px] cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  Create Carousel (Monthly Limit Reached)
+                </button>
+                <div className="text-center">
+                  <Link
+                    to="/pricing"
+                    className="inline-flex items-center gap-2 py-3 px-6 rounded-full bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-[14px] shadow-lg shadow-[#FF5A00]/25 transition-all"
+                  >
+                    <Zap size={16} />
+                    Get More Generations
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={handleGenerate}
+                disabled={!topic.trim() || loading}
+                className={`btn-accent w-full flex items-center justify-center gap-2 !py-4 text-[15px] font-semibold transition-all ${
+                  !topic.trim() || loading ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Generating carousel...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={17} />
+                    Generate carousel
+                    <ArrowRight size={17} />
+                  </>
+                )}
+              </button>
+            )}
+
             <p className="text-center text-[12px] text-[#6B6B67] mt-3">
               Creates fully editable slides — not flattened images
             </p>
@@ -197,13 +262,13 @@ export default function CreatePage() {
             <p className="text-[15px] text-[#6B6B67] mb-4">Or start from a template</p>
             <div className="flex flex-wrap justify-center gap-3">
               {getPublishedTemplates().slice(0, 4).map(t => (
-                <a
+                <Link
                   key={t.id}
-                  href={`/editor/new?template=${t.id}`}
+                  to={`/templates/${t.id}`}
                   className="px-4 py-2 rounded-full border border-[rgba(17,17,17,0.12)] text-[13px] font-medium text-[#6B6B67] hover:border-[#111111] hover:text-[#111111] transition-all no-underline"
                 >
                   {t.name.split(' ').slice(0, 4).join(' ')}...
-                </a>
+                </Link>
               ))}
             </div>
           </div>
@@ -223,16 +288,17 @@ export default function CreatePage() {
             <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
               <AlertCircle size={24} />
             </div>
-            <h3 className="text-[22px] font-bold mb-2">Monthly Limit Reached</h3>
+            <h3 className="text-[22px] font-bold mb-2">Monthly carousel limit reached.</h3>
             <p className="text-[14px] text-[#6B6B67] mb-6 leading-relaxed">
               {limitError}
             </p>
             <div className="flex flex-col gap-2.5">
               <Link
                 to="/pricing"
-                className="w-full py-3.5 px-6 rounded-full bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-[14px] transition-all text-center shadow-lg shadow-[#FF5A00]/25"
+                className="w-full py-3.5 px-6 rounded-full bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-[14px] transition-all text-center shadow-lg shadow-[#FF5A00]/25 flex items-center justify-center gap-2"
               >
-                Upgrade Plan
+                <Zap size={16} />
+                Get More Generations
               </Link>
               <button
                 type="button"

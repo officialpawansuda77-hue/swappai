@@ -26,7 +26,7 @@ import BackgroundPanel from '../components/editor/BackgroundPanel';
 import BrandKitPanel from '../components/editor/BrandKitPanel';
 import { Project, Slide, CanvasElement, TextProperties, ShapeProperties, ImageProperties, SlideBackground } from '../types';
 import { v4 as uuidv4 } from 'uuid';
-import { removeImageBackground } from '../lib/backgroundRemoval';
+import { removeImageBackground, warmUpBgServer, isHdBgRemovalAvailable, BgRemovalMode } from '../lib/backgroundRemoval';
 
 // ─── AUTOSAVE HOOK ────────────────────────────────────────────────────────────
 function useAutosave(saveStatus: string, onSave: () => void) {
@@ -295,21 +295,27 @@ function PropertiesPanel({
   const shapeProps = element.properties as ShapeProperties;
   const imageProps = element.properties as ImageProperties;
 
-  const [removingBg, setRemovingBg] = useState(false);
+  const [removingBg, setRemovingBg] = useState<BgRemovalMode | null>(null);
   const toastMsg = onToast ?? (() => {});
+  const hdAvailable = isHdBgRemovalAvailable();
 
-  const handleRemoveBg = async () => {
+  // Wake the HD server early (free tier sleeps when idle) so an HD click is fast.
+  useEffect(() => {
+    if (isImage) warmUpBgServer();
+  }, [isImage]);
+
+  const handleRemoveBg = async (mode: BgRemovalMode) => {
     if (removingBg) return;
-    setRemovingBg(true);
-    toastMsg('Removing background… (first use can take a minute)');
+    setRemovingBg(mode);
+    toastMsg(mode === 'hd' ? 'Removing background (HD)…' : 'Removing background…');
     try {
-      const cutout = await removeImageBackground(imageProps.src);
+      const cutout = await removeImageBackground(imageProps.src, toastMsg, mode);
       updateProp('src', cutout);
       toastMsg('Background removed');
     } catch (err) {
       toastMsg(err instanceof Error ? err.message : 'Background removal failed');
     } finally {
-      setRemovingBg(false);
+      setRemovingBg(null);
     }
   };
 
@@ -704,14 +710,31 @@ function PropertiesPanel({
             </div>
           </div>
 
-          <button
-            onClick={handleRemoveBg}
-            disabled={removingBg}
-            className="w-full py-2 px-3 rounded-lg bg-[#FF5A00] hover:bg-[#e04f00] disabled:opacity-60 text-[11px] font-semibold text-white flex items-center justify-center gap-1.5 transition-colors mb-2"
-          >
-            {removingBg ? <Loader2 size={13} className="animate-spin" /> : <Scissors size={13} />}
-            {removingBg ? 'Removing background…' : 'Remove Background'}
-          </button>
+          <div className="flex gap-1.5 mb-1">
+            <button
+              onClick={() => handleRemoveBg('fast')}
+              disabled={removingBg !== null}
+              className="flex-1 py-2 px-3 rounded-lg bg-[#FF5A00] hover:bg-[#e04f00] disabled:opacity-60 text-[11px] font-semibold text-white flex items-center justify-center gap-1.5 transition-colors"
+              title="Fast, free, runs in your browser — best for photos of people"
+            >
+              {removingBg === 'fast' ? <Loader2 size={13} className="animate-spin" /> : <Scissors size={13} />}
+              {removingBg === 'fast' ? 'Removing…' : 'Remove Background'}
+            </button>
+            {hdAvailable && (
+              <button
+                onClick={() => handleRemoveBg('hd')}
+                disabled={removingBg !== null}
+                className="py-2 px-3 rounded-lg bg-[rgba(255,255,255,0.08)] hover:bg-[rgba(255,255,255,0.14)] disabled:opacity-60 text-[11px] font-semibold text-white flex items-center justify-center gap-1 transition-colors"
+                title="HD mode — better for products, objects and non-human subjects"
+              >
+                {removingBg === 'hd' ? <Loader2 size={13} className="animate-spin" /> : null}
+                HD
+              </button>
+            )}
+          </div>
+          <p className="text-[10px] text-[rgba(247,245,240,0.4)] mb-2">
+            {hdAvailable ? 'Best for people. Use HD for products & objects.' : 'Best for photos of people.'}
+          </p>
 
           {onSetAsBackground && (
             <button
@@ -1022,6 +1045,11 @@ export default function EditorPage() {
         <div className="flex items-center gap-2 md:gap-3 min-w-0">
           <Link
             to="/dashboard"
+            onClick={async () => {
+              if (editor.state.project) {
+                await saveUserProject(editor.state.project, uid);
+              }
+            }}
             className="p-2 rounded-lg text-[rgba(247,245,240,0.6)] hover:text-white hover:bg-[rgba(255,255,255,0.06)] transition-colors flex-shrink-0 min-w-[36px] min-h-[36px] flex items-center justify-center"
             title="Back to Dashboard"
           >

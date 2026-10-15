@@ -120,6 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Purge any legacy demo user from browser storage
     try {
       localStorage.removeItem('swapp_demo_user');
+      localStorage.removeItem('swapp_admin_session');
     } catch {
       // ignore
     }
@@ -137,7 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         fetchProfile(session.user.id).finally(() => setLoading(false));
       } else {
-        const localAdmin = localStorage.getItem('swapp_admin_session');
+        const localAdmin = null as string | null; // client-side admin bypass removed (server + RLS decide admin)
         if (localAdmin) {
           try {
             const parsed = JSON.parse(localAdmin);
@@ -152,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       }
     }).catch(() => {
-      const localAdmin = localStorage.getItem('swapp_admin_session');
+      const localAdmin = null as string | null; // client-side admin bypass removed (server + RLS decide admin)
       if (localAdmin) {
         try {
           const parsed = JSON.parse(localAdmin);
@@ -245,6 +246,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       localStorage.removeItem('swapp_demo_user');
+      localStorage.removeItem('swapp_admin_session');
     } catch {
       // ignore
     }

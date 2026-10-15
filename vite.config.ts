@@ -183,6 +183,90 @@ CRITICAL RULES:
               return;
             }
 
+            // Helper to bridge Vite Connect middleware to serverless handler format
+            const runServerless = async (handlerRelPath: string) => {
+              const fullFilePath = path.resolve(process.cwd(), handlerRelPath);
+              let mod: any;
+              try {
+                mod = await server.ssrLoadModule(fullFilePath);
+              } catch {
+                const { pathToFileURL } = await import('url');
+                mod = await import(`${pathToFileURL(fullFilePath).href}?t=${Date.now()}`);
+              }
+              const handler = mod.default;
+
+              const anyReq = req as any;
+              const anyRes = res as any;
+              let chunks: Buffer[] = [];
+              req.on('data', (chunk: Buffer) => chunks.push(chunk));
+              req.on('end', async () => {
+                const raw = Buffer.concat(chunks).toString('utf8');
+                try {
+                  anyReq.body = raw ? JSON.parse(raw) : {};
+                } catch {
+                  anyReq.body = raw;
+                }
+
+                // Add Express-like helpers expected by handlers
+                anyRes.status = (code: number) => {
+                  res.statusCode = code;
+                  return res;
+                };
+                anyRes.json = (data: any) => {
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify(data));
+                  return res;
+                };
+
+                // Populate query params if present
+                const fullUrl = req.url || '';
+                const qIdx = fullUrl.indexOf('?');
+                anyReq.query = {};
+                if (qIdx !== -1) {
+                  const searchParams = new URLSearchParams(fullUrl.slice(qIdx));
+                  for (const [key, val] of searchParams.entries()) {
+                    anyReq.query[key] = val;
+                  }
+                }
+
+                try {
+                  await handler(req, res);
+                } catch (err: any) {
+                  console.error(`Error in ${url}:`, err);
+                  if (!res.writableEnded) {
+                    res.statusCode = 500;
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(JSON.stringify({ error: err.message || 'Internal error' }));
+                  }
+                }
+              });
+            };
+
+            // 3. Dodo Create Checkout
+            if (url === '/api/dodo/create-checkout') {
+              return runServerless('api/dodo/create-checkout.ts');
+            }
+
+            // 4. Dodo Webhook
+            if (url === '/api/dodo/webhook') {
+              return runServerless('api/dodo/webhook.ts');
+            }
+
+            // 5. Dodo Verify Subscription
+            if (url === '/api/dodo/verify-subscription') {
+              return runServerless('api/dodo/verify-subscription.ts');
+            }
+
+            // 6. Subscription Usage Stats
+            if (url === '/api/subscription/usage') {
+              return runServerless('api/subscription/usage.ts');
+            }
+
+            // 7. Consume Generation Server-Side
+            if (url === '/api/subscription/consume-generation') {
+              return runServerless('api/subscription/consume-generation.ts');
+            }
+
             next();
           });
         },

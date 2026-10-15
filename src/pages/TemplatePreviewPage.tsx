@@ -156,7 +156,7 @@ export default function TemplatePreviewPage() {
               <div className="flex flex-col gap-3">
                 <button
                   onClick={() => {
-                    const hasAdmin = typeof window !== 'undefined' && !!localStorage.getItem('swapp_admin_session');
+                    const hasAdmin = typeof window !== 'undefined' && false;
                     if (!user && !profile && !hasAdmin) {
                       navigate('/pricing', { state: { from: `/editor/new?template=${template.id}` } });
                     } else {
@@ -200,7 +200,7 @@ export default function TemplatePreviewPage() {
                   <Link key={t.id} to={`/templates/${t.id}`} className="no-underline">
                     <div className="template-card">
                       <div style={{ aspectRatio: '4/5' }} className="overflow-hidden">
-                        <SlidePreview slide={t.slides[0]} scale={300 / 1080} style={{ width: '100%', height: '100%' }} />
+                        <SlidePreview slide={t.slides[0]} autoScale className="w-full h-full" style={{ width: '100%', height: '100%' }} />
                       </div>
                       <div className="p-4">
                         <p className="text-[13px] font-semibold text-[#111111] mb-1">{t.name}</p>

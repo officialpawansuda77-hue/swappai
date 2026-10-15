@@ -1,9 +1,11 @@
-import { supabase, isSupabaseConfigured } from './supabase';
+import { supabase } from './supabase';
+import { apiFetch, newRequestId, ApiError } from './apiClient';
 
 export type PlanId = 'starter' | 'creator' | 'studio';
 
 export interface PlanDetails {
   id: PlanId;
+  productId?: string;
   name: string;
   price: number;
   priceFormatted: string;
@@ -16,6 +18,11 @@ export interface PlanDetails {
   isPopular?: boolean;
   ctaText: string;
 }
+
+export const DODO_PRODUCT_IDS = {
+  creator: 'pdt_0NoV6f6sKvSHpmZrs8uPj',
+  studio: 'pdt_0NoV8Hg2oW2DEM5YbUHGz',
+} as const;
 
 export const PLANS: Record<PlanId, PlanDetails> = {
   starter: {
@@ -38,12 +45,13 @@ export const PLANS: Record<PlanId, PlanDetails> = {
   },
   creator: {
     id: 'creator',
+    productId: DODO_PRODUCT_IDS.creator,
     name: 'Creator',
-    price: 4.99,
-    priceFormatted: '$4.99',
+    price: 12,
+    priceFormatted: '$12',
     period: '/mo',
     description: 'For a consistent content engine.',
-    subDescription: '$4.99 / month, billed monthly. Cancel anytime.',
+    subDescription: '$12 / month, billed monthly. Cancel anytime.',
     monthlyGenerations: 30,
     maxProjects: 'unlimited',
     features: [
@@ -58,6 +66,7 @@ export const PLANS: Record<PlanId, PlanDetails> = {
   },
   studio: {
     id: 'studio',
+    productId: DODO_PRODUCT_IDS.studio,
     name: 'Studio',
     price: 19,
     priceFormatted: '$19',
@@ -79,7 +88,7 @@ export const PLANS: Record<PlanId, PlanDetails> = {
 
 export interface PendingPlan {
   planId: PlanId;
-  paymentStatus: 'pending' | 'paid_demo' | 'free';
+  paymentStatus: 'pending' | 'free';
   transactionId?: string;
   timestamp: number;
 }
@@ -98,7 +107,7 @@ export function getPendingPlan(): PendingPlan | null {
   }
 }
 
-export function setPendingPlan(planId: PlanId, paymentStatus: 'pending' | 'paid_demo' | 'free' = 'pending', transactionId?: string): void {
+export function setPendingPlan(planId: PlanId, paymentStatus: 'pending' | 'free' = 'pending', transactionId?: string): void {
   const item: PendingPlan = {
     planId,
     paymentStatus,
@@ -117,13 +126,14 @@ export function clearPendingPlan(): void {
 export interface UserSubscription {
   userId: string;
   planId: PlanId;
-  status: 'active' | 'canceled' | 'past_due';
+  status: 'active' | 'canceled' | 'past_due' | 'expired' | 'failed';
   monthlyGenerations: number;
   generationsUsed: number;
+  extraGenerations: number;
   periodStart: string;
   periodEnd: string;
   billingInterval: 'monthly';
-  lastPaymentId?: string;
+  dodoSubscriptionId?: string;
 }
 
 export function getDefaultSubscription(userId: string, planId: PlanId = 'starter'): UserSubscription {
@@ -137,163 +147,134 @@ export function getDefaultSubscription(userId: string, planId: PlanId = 'starter
     status: 'active',
     monthlyGenerations: plan.monthlyGenerations,
     generationsUsed: 0,
+    extraGenerations: 0,
     periodStart: now.toISOString(),
     periodEnd: nextMonth.toISOString(),
     billingInterval: 'monthly',
   };
 }
 
-// Fetch user subscription from Supabase or local persistence
+// Server-backed subscription + credit reads/writes for the legacy UI.
+// Replaces the old block that wrote quota counters directly from the browser.
+
+// Server plans: free | creator | pro | business | agency → legacy UI ids.
+function toLegacyPlanId(raw: string | undefined): PlanId {
+  if (raw === 'creator') return 'creator';
+  if (raw === 'pro' || raw === 'studio' || raw === 'business' || raw === 'agency') return 'studio';
+  return 'starter';
+}
+
+// Fetch subscription/credits from the server (authenticated; never trusts a client userId).
 export async function getUserSubscription(userId: string): Promise<UserSubscription> {
   const localKey = USER_SUBSCRIPTION_KEY_PREFIX + userId;
-  const cached = localStorage.getItem(localKey);
 
-  if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
+  try {
+    const uData = await apiFetch<{
+      plan?: string; status?: string; monthlyLimit?: number; extraGenerations?: number;
+      used?: number; periodStart?: string; periodEnd?: string;
+    }>('/api/subscription/usage', { timeoutMs: 15_000 });
 
-      if (!error && data && data.plan) {
-        const sub: UserSubscription = {
-          userId,
-          planId: (data.plan as PlanId) || 'starter',
-          status: data.subscription_status || 'active',
-          monthlyGenerations: data.monthly_generation_limit || PLANS[data.plan as PlanId]?.monthlyGenerations || 5,
-          generationsUsed: data.generations_used || 0,
-          periodStart: data.period_start || new Date().toISOString(),
-          periodEnd: data.period_end || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString(),
-          billingInterval: 'monthly',
-        };
-        localStorage.setItem(localKey, JSON.stringify(sub));
-        return sub;
-      }
-    } catch {
-      // fallback to cached or default
-    }
+    const sub: UserSubscription = {
+      userId,
+      planId: toLegacyPlanId(uData.plan),
+      status: (uData.status as UserSubscription['status']) || 'active',
+      monthlyGenerations: uData.monthlyLimit ?? 0,
+      generationsUsed: uData.used ?? 0,
+      extraGenerations: uData.extraGenerations ?? 0,
+      periodStart: uData.periodStart || new Date().toISOString(),
+      periodEnd: uData.periodEnd || new Date(Date.now() + 30 * 86_400_000).toISOString(),
+      billingInterval: 'monthly',
+    };
+    // Cache is display-only; the server is always the authority for spending.
+    localStorage.setItem(localKey, JSON.stringify(sub));
+    return sub;
+  } catch (err) {
+    console.warn('Could not load subscription from server, using cached display values:', err);
   }
 
+  const cached = localStorage.getItem(localKey);
   if (cached) {
     try {
-      const parsed = JSON.parse(cached);
-      // Check if period has reset
-      if (new Date(parsed.periodEnd) < new Date()) {
-        parsed.generationsUsed = 0;
-        parsed.periodStart = new Date().toISOString();
-        parsed.periodEnd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString();
-        localStorage.setItem(localKey, JSON.stringify(parsed));
-      }
-      return parsed;
+      return JSON.parse(cached) as UserSubscription;
     } catch {
       // ignore
     }
   }
-
-  const def = getDefaultSubscription(userId, 'starter');
-  localStorage.setItem(localKey, JSON.stringify(def));
-  return def;
+  return getDefaultSubscription(userId, 'starter');
 }
 
-// Activate subscription after checkout or free selection
-export async function activateSubscription(
-  userId: string,
-  planId: PlanId,
-  paymentStatus: string = 'paid'
-): Promise<UserSubscription> {
-  const plan = PLANS[planId] || PLANS.starter;
-  const now = new Date();
-  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-
-  const sub: UserSubscription = {
-    userId,
-    planId,
-    status: 'active',
-    monthlyGenerations: plan.monthlyGenerations,
-    generationsUsed: 0,
-    periodStart: now.toISOString(),
-    periodEnd: nextMonth.toISOString(),
-    billingInterval: 'monthly',
-    lastPaymentId: paymentStatus,
-  };
-
-  const localKey = USER_SUBSCRIPTION_KEY_PREFIX + userId;
-  localStorage.setItem(localKey, JSON.stringify(sub));
-  clearPendingPlan();
-
-  if (isSupabaseConfigured) {
-    try {
-      await supabase
-        .from('profiles')
-        .update({
-          plan: planId,
-          monthly_generation_limit: plan.monthlyGenerations,
-          generations_used: 0,
-          subscription_status: 'active',
-          period_start: now.toISOString(),
-          period_end: nextMonth.toISOString(),
-          updated_at: now.toISOString(),
-        })
-        .eq('user_id', userId);
-    } catch {
-      // local copy is active
-    }
-  }
-
-  return sub;
-}
-
-// Check generation allowance
+// Check credit availability (display/pre-check only — the server re-checks atomically).
 export async function canGenerateCarousel(userId: string): Promise<{
   allowed: boolean;
   used: number;
   limit: number;
+  remaining: number;
   reason?: string;
 }> {
   const sub = await getUserSubscription(userId);
-  const allowed = sub.generationsUsed < sub.monthlyGenerations;
+  const totalLimit = sub.monthlyGenerations + (sub.extraGenerations || 0);
+  const remaining = Math.max(0, totalLimit - sub.generationsUsed);
+  const allowed = remaining > 0 && (sub.status === 'active' || sub.status === 'past_due' || sub.status === 'canceled');
 
   return {
     allowed,
     used: sub.generationsUsed,
-    limit: sub.monthlyGenerations,
+    limit: totalLimit,
+    remaining,
     reason: allowed
       ? undefined
-      : `You've reached your ${sub.monthlyGenerations} carousel limit for this month. Upgrade your plan to continue creating.`,
+      : remaining <= 0
+      ? `You're out of AI credits for this period (${sub.generationsUsed} / ${totalLimit} used). Upgrade or wait for your monthly reset.`
+      : 'Your subscription is not active. Please renew to continue creating.',
   };
 }
 
-// Record generation usage
-export async function recordCarouselGeneration(userId: string): Promise<{
+// Charge credits server-side (atomic, idempotent). No client-side fallback:
+// if the server can't confirm the charge, the action does not proceed.
+export async function recordCarouselGeneration(userId: string, requestId?: string): Promise<{
   success: boolean;
   used: number;
   limit: number;
+  remaining: number;
+  error?: string;
 }> {
-  const sub = await getUserSubscription(userId);
-  if (sub.generationsUsed >= sub.monthlyGenerations) {
-    return { success: false, used: sub.generationsUsed, limit: sub.monthlyGenerations };
+  try {
+    const result = await apiFetch<{ used: number; limit: number; remaining: number }>(
+      '/api/subscription/consume-generation',
+      { method: 'POST', json: { requestId: requestId || newRequestId() }, timeoutMs: 20_000 }
+    );
+    await getUserSubscription(userId);
+    return { success: true, used: result.used, limit: result.limit, remaining: result.remaining };
+  } catch (err) {
+    const e = err as ApiError;
+    return {
+      success: false,
+      used: Number(e?.data?.used ?? 0),
+      limit: Number(e?.data?.limit ?? 0),
+      remaining: Number(e?.data?.available ?? 0),
+      error: e?.code === 'insufficient_credits'
+        ? "You're out of AI credits for this period."
+        : e?.message || 'Could not confirm your credits. Please try again.',
+    };
   }
+}
 
-  const newUsed = sub.generationsUsed + 1;
-  sub.generationsUsed = newUsed;
-
-  const localKey = USER_SUBSCRIPTION_KEY_PREFIX + userId;
-  localStorage.setItem(localKey, JSON.stringify(sub));
-
-  if (isSupabaseConfigured) {
-    try {
-      await supabase
-        .from('profiles')
-        .update({
-          generations_used: newUsed,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', userId);
-    } catch {
-      // local is updated
-    }
-  }
-
-  return { success: true, used: newUsed, limit: sub.monthlyGenerations };
+// Request a Dodo Payments Checkout session
+export async function createDodoCheckoutSession(
+  planId: PlanId | 'extra_generations',
+  returnUrl?: string
+): Promise<{ checkoutUrl: string; error?: string }> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const user = sessionData?.session?.user;
+  // The server derives user id + email from the JWT and picks the product.
+  const data = await apiFetch<{ checkoutUrl: string }>('/api/dodo/create-checkout', {
+    method: 'POST',
+    json: {
+      planId,
+      userName: user?.user_metadata?.full_name || user?.user_metadata?.name,
+      returnUrl: returnUrl || `${window.location.origin}/dashboard?payment=success`,
+    },
+    timeoutMs: 20_000,
+  });
+  return { checkoutUrl: data.checkoutUrl };
 }

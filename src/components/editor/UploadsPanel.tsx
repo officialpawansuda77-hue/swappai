@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Upload, Image as ImageIcon, Trash2, Plus, Wallpaper, Scissors, Loader2, Sparkles } from 'lucide-react';
 import { CanvasElement, ImageProperties, SlideBackground } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
-import { removeImageBackground } from '../../lib/backgroundRemoval';
+import { removeImageBackground, isHdBgRemovalAvailable, BgRemovalMode } from '../../lib/backgroundRemoval';
 import { generateAiImage, STYLE_PRESETS, ASPECT_RATIOS } from '../../lib/aiImageGeneration';
 
 interface UploadsPanelProps {
@@ -128,13 +128,17 @@ export default function UploadsPanel({ onAddElement, onSetBackground, onToast }:
     onToast('Image removed from library');
   };
 
-  const handleRemoveBg = async (e: React.MouseEvent, item: { id: string; name: string; url: string }) => {
+  const handleRemoveBg = async (
+    e: React.MouseEvent,
+    item: { id: string; name: string; url: string },
+    mode: BgRemovalMode = 'fast',
+  ) => {
     e.stopPropagation();
     if (removingId) return;
     setRemovingId(item.id);
-    onToast('Removing background… (first use can take a minute)');
+    onToast(mode === 'hd' ? 'Removing background (HD)…' : 'Removing background…');
     try {
-      const cutout = await removeImageBackground(item.url);
+      const cutout = await removeImageBackground(item.url, onToast, mode);
       const newItem = { id: uuidv4(), name: `${item.name} (no bg)`, url: cutout };
       setUploads(prev => [newItem, ...prev]);
       onToast('Background removed — saved as a new image');
@@ -291,10 +295,20 @@ export default function UploadsPanel({ onAddElement, onSetBackground, onToast }:
                   onClick={(e) => handleRemoveBg(e, item)}
                   disabled={removingId !== null}
                   className="p-1 rounded bg-black/60 hover:bg-[#FF5A00] text-white transition-colors disabled:opacity-50"
-                  title="Remove background"
+                  title="Remove background (fast, best for people)"
                 >
                   {removingId === item.id ? <Loader2 size={12} className="animate-spin" /> : <Scissors size={12} />}
                 </button>
+                {isHdBgRemovalAvailable() && (
+                  <button
+                    onClick={(e) => handleRemoveBg(e, item, 'hd')}
+                    disabled={removingId !== null}
+                    className="px-1 rounded bg-black/60 hover:bg-[#FF5A00] text-white text-[9px] font-bold leading-none transition-colors disabled:opacity-50"
+                    title="Remove background (HD — products & objects)"
+                  >
+                    HD
+                  </button>
+                )}
                 <button
                   onClick={(e) => handleDeleteImage(e, item.id)}
                   className="p-1 rounded bg-black/60 hover:bg-red-500 text-white transition-colors"

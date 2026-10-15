@@ -1,3 +1,5 @@
+/// <reference path="../deno.d.ts" />
+
 // Supabase Edge Function: deconstruct-slide
 // Deconstructs a flattened carousel slide image into genuine editable Fabric.js layers using Gemini 2.5 Flash.
 
@@ -69,7 +71,7 @@ CRITICAL RULES:
 4. Colors must be precise 6-character hex codes (e.g. "#FF5A00", "#1E1E1E").
 5. Only return the JSON object, with no markdown code blocks or surrounding commentary.`;
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }

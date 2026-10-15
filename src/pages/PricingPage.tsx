@@ -5,9 +5,11 @@ import Navbar from '../components/marketing/Navbar';
 import Footer from '../components/marketing/Footer';
 import PlanModal from '../components/pricing/PlanModal';
 import { PLANS, PlanDetails, setPendingPlan } from '../lib/subscription';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function PricingPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<PlanDetails | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -19,13 +21,15 @@ export default function PricingPage() {
   const handleModalContinue = (plan: PlanDetails) => {
     setIsModalOpen(false);
     if (plan.price === 0) {
-      // Free plan: Save pending starter, directly go to authentication
       setPendingPlan('starter', 'free');
-      navigate('/sign-in');
+      navigate(user ? '/dashboard' : '/sign-in');
     } else {
-      // Paid plan: Save pending plan, proceed to checkout
       setPendingPlan(plan.id, 'pending');
-      navigate('/checkout');
+      if (user) {
+        navigate(`/checkout?plan=${plan.id}`);
+      } else {
+        navigate(`/sign-in?plan=${plan.id}`);
+      }
     }
   };
 
@@ -150,10 +154,10 @@ export default function PricingPage() {
             </div>
           </div>
 
-          {/* Demonstration Notice */}
+          {/* Payments Notice */}
           <div className="text-center mt-12 mb-4">
             <p className="text-[13px] text-[#6B6B67]">
-              Prices shown for product demonstration. No real payment is collected in this MVP.
+              Secure checkout powered by Dodo Payments. Monthly subscriptions can be canceled anytime from your dashboard.
             </p>
           </div>
         </div>

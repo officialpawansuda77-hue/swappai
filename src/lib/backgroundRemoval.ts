@@ -1,14 +1,36 @@
-// Client for the self-hosted rembg background-removal service.
-// Configure via VITE_BG_REMOVAL_API_URL (+ optional VITE_BG_REMOVAL_API_KEY).
-// If not configured, removeImageBackground throws a user-friendly error.
+// Background removal, two modes:
+//  - 'fast' (default): free in-browser MODNet (~2 s, best for photos of people, see
+//    browserBgRemoval.ts). Falls back to the server if the browser path fails.
+//  - 'hd': self-hosted rembg server (better for products / objects / non-human subjects).
+// Configure the server via VITE_BG_REMOVAL_API_URL (+ optional VITE_BG_REMOVAL_API_KEY).
+
+import { canUseBrowserBgRemoval, removeBackgroundInBrowser } from './browserBgRemoval';
 
 const API_URL = (
   import.meta.env.VITE_BG_REMOVAL_API_URL as string | undefined
 )?.replace(/\/$/, '');
 const API_KEY = import.meta.env.VITE_BG_REMOVAL_API_KEY as string | undefined;
 
+export type BgRemovalMode = 'fast' | 'hd';
+
 export function isBgRemovalConfigured(): boolean {
   return !!API_URL;
+}
+
+/** True if the server (HD mode) is configured. */
+export function isHdBgRemovalAvailable(): boolean {
+  return !!API_URL;
+}
+
+let warmedUp = false;
+/**
+ * Fire-and-forget request that wakes the (free, sleep-on-idle) server early — e.g. when
+ * the editor opens — so a later HD request doesn't wait for a cold start. Runs once per page.
+ */
+export function warmUpBgServer(): void {
+  if (warmedUp || !API_URL) return;
+  warmedUp = true;
+  fetch(`${API_URL}/health`, { method: 'GET', mode: 'no-cors', cache: 'no-store' }).catch(() => {});
 }
 
 export class BgRemovalError extends Error {}
@@ -40,10 +62,33 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 export async function removeImageBackground(
   src: string,
   onStatus?: (msg: string) => void,
+  mode: BgRemovalMode = 'fast',
+): Promise<string> {
+  if (mode === 'hd') return removeOnServer(src, onStatus);
+
+  // Fast path: in-browser model (free, no server, no cold start).
+  if (canUseBrowserBgRemoval()) {
+    try {
+      return await removeBackgroundInBrowser(src, onStatus);
+    } catch (err) {
+      console.warn('In-browser background removal failed, falling back to server:', err);
+      if (!API_URL) {
+        throw new BgRemovalError('Background removal failed. Please try again.');
+      }
+    }
+  }
+
+  // Fallback: self-hosted rembg server.
+  return removeOnServer(src, onStatus);
+}
+
+async function removeOnServer(
+  src: string,
+  onStatus?: (msg: string) => void,
 ): Promise<string> {
   if (!API_URL) {
     throw new BgRemovalError(
-      'Background removal is not set up yet. Add VITE_BG_REMOVAL_API_URL in Vercel environment variables.',
+      'HD background removal is not set up yet. Add VITE_BG_REMOVAL_API_URL in Vercel environment variables.',
     );
   }
 

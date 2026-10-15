@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 export default function Navbar() {
   const { user, isAdmin, signOut } = useAuth();
-  const hasLocalAdmin = typeof window !== 'undefined' && !!localStorage.getItem('swapp_admin_session');
+  const hasLocalAdmin = typeof window !== 'undefined' && false;
   const isEffectiveAdmin = isAdmin || hasLocalAdmin;
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);

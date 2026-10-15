@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, AlertTriangle, ShieldCheck, Sparkles } from 'lucide-react';
 import Navbar from '../components/marketing/Navbar';
 import { useAuth } from '../contexts/AuthContext';
-import { getPendingPlan, activateSubscription, PLANS, PlanDetails } from '../lib/subscription';
+import { getPendingPlan, clearPendingPlan, PLANS, PlanDetails } from '../lib/subscription';
 
 export default function LoginPage() {
   const { signIn, signUp, signInWithGoogle, signInAsDemo, isConfigured, profile, user } = useAuth();
@@ -25,24 +25,26 @@ export default function LoginPage() {
     : PLANS.starter;
 
   // Plan tagline
-  const planTag = pendingPlan
+  const planTag = pendingPlan && pendingPlan.planId !== 'starter'
     ? `${activePlanDetails.name.toUpperCase()} PLAN · ${activePlanDetails.priceFormatted} / MO`
     : 'GET STARTED FREE · $0 / MO';
 
-  const handleAuthSuccess = async (targetUserId: string) => {
-    const planToActivate = pendingPlan?.planId || 'starter';
-    const paymentStatus = pendingPlan?.paymentStatus || 'free';
+  const handleAuthSuccess = async (_targetUserId: string) => {
+    const selectedPlan = pendingPlan?.planId;
 
-    // Activate subscription in database / local persistence
-    await activateSubscription(targetUserId, planToActivate, paymentStatus);
-
-    setSuccessMsg(
-      `Welcome! ${PLANS[planToActivate].name} plan activated with ${PLANS[planToActivate].monthlyGenerations} generations this month.`
-    );
-
-    setTimeout(() => {
-      navigate('/dashboard', { replace: true });
-    }, 800);
+    if (selectedPlan && selectedPlan !== 'starter') {
+      // Paid plan selected: Proceed to Dodo checkout with authenticated user
+      setSuccessMsg(`Welcome! Proceeding to secure checkout for ${PLANS[selectedPlan].name}...`);
+      setTimeout(() => {
+        navigate('/checkout', { replace: true });
+      }, 600);
+    } else {
+      clearPendingPlan();
+      setSuccessMsg('Welcome! Your Starter workspace is ready.');
+      setTimeout(() => {
+        navigate('/dashboard', { replace: true });
+      }, 600);
+    }
   };
 
   // Handle OAuth callback (e.g. returning from Google OAuth)
@@ -103,9 +105,6 @@ export default function LoginPage() {
 
   const handleDemoContinue = async (role: 'admin' | 'user') => {
     signInAsDemo(role);
-    const demoId = role === 'admin' ? 'demo-admin-id' : 'demo-user-id';
-    const planToActivate = role === 'admin' ? 'studio' : (pendingPlan?.planId || 'creator');
-    await activateSubscription(demoId, planToActivate, 'paid_demo');
     navigate(role === 'admin' ? '/admin' : '/dashboard', { replace: true });
   };
 
@@ -128,9 +127,9 @@ export default function LoginPage() {
           </h1>
 
           <p className="text-[15px] text-[#6B6B67] leading-relaxed mb-8">
-            {pendingPlan?.paymentStatus === 'paid_demo'
-              ? 'Sign in or create your account to unlock the editor and activate your plan.'
-              : 'Sign in or create an account to activate your plan and start creating.'}
+            {pendingPlan && pendingPlan.planId !== 'starter'
+              ? `Sign in or create your account to proceed to checkout for ${activePlanDetails.name}.`
+              : 'Sign in or create an account to start creating carousels.'}
           </p>
 
           {/* Toggle pill: Sign up / Log in */}
@@ -279,8 +278,8 @@ export default function LoginPage() {
               ) : (
                 <>
                   <span>
-                    {pendingPlan?.paymentStatus === 'paid_demo'
-                      ? 'Confirm & Continue →'
+                    {pendingPlan && pendingPlan.planId !== 'starter'
+                      ? `Proceed to Checkout (${activePlanDetails.priceFormatted}) →`
                       : 'Continue to Dashboard →'}
                   </span>
                 </>

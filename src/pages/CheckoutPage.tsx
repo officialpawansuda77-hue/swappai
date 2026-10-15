@@ -1,47 +1,53 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, Lock, ShieldCheck, Sparkles, CreditCard } from 'lucide-react';
-import { getPendingPlan, setPendingPlan, PLANS, PlanDetails } from '../lib/subscription';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, Check, Lock, ShieldCheck, Sparkles, ExternalLink, AlertCircle } from 'lucide-react';
+import { getPendingPlan, PLANS, PlanDetails, createDodoCheckoutSession, PlanId } from '../lib/subscription';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
-  const [pending, setPending] = useState(getPendingPlan());
-  const [cardName, setCardName] = useState('');
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardExp, setCardExp] = useState('');
-  const [cardCvc, setCardCvc] = useState('');
-  const [processing, setProcessing] = useState(false);
+  const [searchParams] = useSearchParams();
+  const { user, profile, loading: authLoading } = useAuth();
+
+  const planFromQuery = searchParams.get('plan') as PlanId | null;
+  const pending = getPendingPlan();
+  const planId: PlanId = (planFromQuery && PLANS[planFromQuery] ? planFromQuery : (pending?.planId || 'creator'));
+
+  const [loadingCheckout, setLoadingCheckout] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // If no pending plan or if plan is free starter, redirect to pricing
+  const plan: PlanDetails = PLANS[planId] || PLANS.creator;
+
+  // If user selected starter, redirect to pricing
   useEffect(() => {
-    const current = getPendingPlan();
-    if (!current || current.planId === 'starter') {
+    if (planId === 'starter') {
       navigate('/pricing', { replace: true });
-    } else {
-      setPending(current);
     }
-  }, [navigate]);
+  }, [planId, navigate]);
 
-  if (!pending || pending.planId === 'starter') {
-    return null;
-  }
+  const handleProceedToDodo = async () => {
+    if (!user && !profile) {
+      // Must be authenticated to link subscription to Supabase user_id
+      navigate(`/sign-in?plan=${plan.id}`, { replace: true });
+      return;
+    }
 
-  const plan: PlanDetails = PLANS[pending.planId] || PLANS.creator;
-
-  const handlePay = (e: React.FormEvent) => {
-    e.preventDefault();
     setErrorMsg(null);
-    setProcessing(true);
+    setLoadingCheckout(true);
 
-    setTimeout(() => {
-      const txnId = 'demo_txn_' + Math.random().toString(36).substring(2, 10);
-      // Mark as paid_demo
-      setPendingPlan(plan.id, 'paid_demo', txnId);
-      setProcessing(false);
-      // Navigate to Sign up / Login to activate the subscription
-      navigate('/sign-in');
-    }, 1200);
+    try {
+      const returnUrl = `${window.location.origin}/dashboard?checkout=success`;
+      const { checkoutUrl } = await createDodoCheckoutSession(plan.id, returnUrl);
+      if (checkoutUrl) {
+        window.location.href = checkoutUrl;
+      } else {
+        throw new Error('No checkout URL received from Dodo Payments.');
+      }
+    } catch (err: any) {
+      console.error('Dodo checkout creation error:', err);
+      setErrorMsg(err.message || 'Unable to open Dodo checkout session. Please check API keys.');
+      setLoadingCheckout(false);
+    }
   };
 
   return (
@@ -67,13 +73,13 @@ export default function CheckoutPage() {
           {/* Left Column: Plan Summary */}
           <div className="lg:col-span-5">
             <span className="inline-block text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#FF5A00] mb-3">
-              CHECKOUT
+              DODO PAYMENTS CHECKOUT
             </span>
             <h1 className="text-[34px] md:text-[38px] font-black tracking-[-0.03em] text-[#111111] leading-tight mb-4">
-              Complete your purchase.
+              Complete your subscription.
             </h1>
             <p className="text-[15px] text-[#6B6B67] mb-8 leading-relaxed">
-              Unlock the full carousel studio with {plan.name} features.
+              Unlock the full carousel studio with {plan.name} features ({plan.monthlyGenerations} generations per month).
             </p>
 
             {/* Selected Plan Details Card */}
@@ -103,130 +109,103 @@ export default function CheckoutPage() {
 
             <div className="flex items-center gap-2 text-[12px] text-[#6B6B67]">
               <ShieldCheck size={16} className="text-emerald-600 flex-shrink-0" />
-              <span>Encrypted demo payment. Cancel anytime from your account settings.</span>
+              <span>Payments securely processed by Dodo Payments. Cancel anytime.</span>
             </div>
           </div>
 
-          {/* Right Column: Payment Form */}
+          {/* Right Column: Checkout Action */}
           <div className="lg:col-span-7 bg-white rounded-3xl p-8 md:p-10 border border-[rgba(17,17,17,0.08)] shadow-lg">
-            {/* Demo Notice Banner */}
-            <div className="mb-6 p-3.5 rounded-xl bg-amber-50 border border-amber-200/80 text-amber-800 text-[12.5px] flex items-center gap-2.5">
-              <Lock size={15} className="text-amber-600 flex-shrink-0" />
-              <span>
-                <strong>Demo Checkout:</strong> No real money will be charged. This simulates payment for testing.
-              </span>
-            </div>
+            {/* Account Linking Status */}
+            {!authLoading && (!user && !profile) && (
+              <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[13px] flex items-start gap-3">
+                <AlertCircle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold mb-1">Account Required Before Payment</p>
+                  <p className="text-[12.5px] text-amber-800 mb-2">
+                    Please sign in or create an account so your subscription and <strong>{plan.monthlyGenerations} monthly generations</strong> can be linked to your user profile.
+                  </p>
+                  <Link
+                    to={`/sign-in?plan=${plan.id}`}
+                    className="inline-block font-bold text-[#FF5A00] hover:underline"
+                  >
+                    Sign in / Sign up now →
+                  </Link>
+                </div>
+              </div>
+            )}
 
             {/* Order Summary */}
             <div className="mb-7 pb-6 border-b border-[rgba(17,17,17,0.08)]">
               <h2 className="text-[16px] font-bold text-[#111111] mb-3">Order summary</h2>
               <div className="flex justify-between text-[14px] text-[#6B6B67] mb-2">
-                <span>{plan.name} plan (Monthly)</span>
+                <span>{plan.name} Subscription (Billed Monthly)</span>
                 <span className="text-[#111111] font-semibold">{plan.priceFormatted}</span>
               </div>
               <div className="flex justify-between text-[14px] text-[#6B6B67] mb-2">
-                <span>Taxes & fees</span>
-                <span className="text-[#111111] font-semibold">$0.00</span>
+                <span>Monthly allowance</span>
+                <span className="text-[#111111] font-semibold">{plan.monthlyGenerations} carousels</span>
+              </div>
+              <div className="flex justify-between text-[14px] text-[#6B6B67] mb-2">
+                <span>Payment processor</span>
+                <span className="text-[#111111] font-semibold">Dodo Payments</span>
               </div>
               <div className="flex justify-between text-[16px] font-bold text-[#111111] pt-3 border-t border-[rgba(17,17,17,0.06)] mt-3">
                 <span>Total due today</span>
-                <span className="text-[#FF5A00] text-[20px] font-black">{plan.priceFormatted}</span>
+                <span className="text-[#FF5A00] text-[22px] font-black">{plan.priceFormatted}</span>
               </div>
             </div>
 
             {errorMsg && (
-              <div className="mb-6 p-3.5 rounded-lg bg-red-50 text-red-600 border border-red-200 text-[13px]">
-                {errorMsg}
+              <div className="mb-6 p-4 rounded-xl bg-red-50 text-red-600 border border-red-200 text-[13px] leading-relaxed flex items-start gap-2.5">
+                <AlertCircle size={16} className="text-red-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">Checkout Error</p>
+                  <p>{errorMsg}</p>
+                </div>
               </div>
             )}
 
-            {/* Form */}
-            <form onSubmit={handlePay} className="space-y-4">
-              <div>
-                <label className="block text-[12.5px] font-semibold text-[#111111] mb-1.5">
-                  Cardholder name
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={cardName}
-                  onChange={e => setCardName(e.target.value)}
-                  placeholder="Full Name on Card"
-                  className="w-full bg-[#F7F5F0] border border-[rgba(17,17,17,0.12)] rounded-xl px-4 py-3 text-[14px] text-[#111111] focus:outline-none focus:border-[#FF5A00] focus:bg-white transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[12.5px] font-semibold text-[#111111] mb-1.5">
-                  Card details
-                </label>
-                <div className="relative">
-                  <CreditCard size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#6B6B67]" />
-                  <input
-                    type="text"
-                    required
-                    value={cardNumber}
-                    onChange={e => setCardNumber(e.target.value)}
-                    placeholder="•••• •••• •••• ••••"
-                    className="w-full bg-[#F7F5F0] border border-[rgba(17,17,17,0.12)] rounded-xl pl-11 pr-4 py-3 text-[14px] font-mono text-[#111111] focus:outline-none focus:border-[#FF5A00] focus:bg-white transition-all"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[12.5px] font-semibold text-[#111111] mb-1.5">
-                    Expiry date
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={cardExp}
-                    onChange={e => setCardExp(e.target.value)}
-                    placeholder="MM / YY"
-                    className="w-full bg-[#F7F5F0] border border-[rgba(17,17,17,0.12)] rounded-xl px-4 py-3 text-[14px] font-mono text-[#111111] focus:outline-none focus:border-[#FF5A00] focus:bg-white transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[12.5px] font-semibold text-[#111111] mb-1.5">
-                    CVC
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={cardCvc}
-                    onChange={e => setCardCvc(e.target.value)}
-                    placeholder="CVC"
-                    className="w-full bg-[#F7F5F0] border border-[rgba(17,17,17,0.12)] rounded-xl px-4 py-3 text-[14px] font-mono text-[#111111] focus:outline-none focus:border-[#FF5A00] focus:bg-white transition-all"
-                  />
-                </div>
-              </div>
-
+            {/* Dodo Checkout Action */}
+            <div className="space-y-4">
               <button
-                type="submit"
-                disabled={processing}
-                className="w-full py-4 px-6 rounded-full bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-[15px] transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#FF5A00]/25 hover:shadow-xl hover:shadow-[#FF5A00]/30 active:scale-[0.99] disabled:opacity-50 mt-6 cursor-pointer"
+                type="button"
+                onClick={handleProceedToDodo}
+                disabled={loadingCheckout}
+                className="w-full py-4 px-6 rounded-full bg-[#FF5A00] hover:bg-[#e04f00] text-white font-bold text-[15px] transition-all flex items-center justify-center gap-2.5 shadow-lg shadow-[#FF5A00]/25 hover:shadow-xl hover:shadow-[#FF5A00]/30 active:scale-[0.99] disabled:opacity-50 cursor-pointer"
               >
-                {processing ? (
+                {loadingCheckout ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Processing payment...</span>
+                    <span>Connecting to Dodo Payments...</span>
                   </>
                 ) : (
-                  <span>Pay {plan.priceFormatted}</span>
+                  <>
+                    <span>Proceed to Dodo Payments ({plan.priceFormatted})</span>
+                    <ExternalLink size={16} />
+                  </>
                 )}
               </button>
-            </form>
 
-            <p className="text-[12px] text-center text-[#6B6B67] mt-4">
-              By confirming, you agree to SWAPP's Terms of Service and Privacy Policy.
+              <div className="p-4 rounded-2xl bg-[#F7F5F0] border border-[rgba(17,17,17,0.06)] space-y-2 text-[12.5px] text-[#6B6B67]">
+                <div className="flex items-center gap-2">
+                  <Lock size={14} className="text-[#111111]" />
+                  <span className="font-semibold text-[#111111]">Server-Verified Subscription</span>
+                </div>
+                <p>
+                  You will be securely redirected to Dodo Payments hosted checkout to complete your transaction. Your subscription will be activated automatically via server webhook upon confirmation.
+                </p>
+              </div>
+            </div>
+
+            <p className="text-[12px] text-center text-[#6B6B67] mt-6">
+              By confirming, you agree to SWAPP's Terms of Service and Privacy Policy. Cancel anytime from your account.
             </p>
           </div>
         </div>
       </main>
 
       <footer className="py-5 text-center text-[12px] text-[#6B6B67] border-t border-[rgba(17,17,17,0.06)] bg-white">
-        SWAPP.AI — Secure Checkout Simulation
+        SWAPP.AI — Powered by Dodo Payments
       </footer>
     </div>
   );

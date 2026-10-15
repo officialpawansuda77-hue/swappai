@@ -4,6 +4,7 @@
 
 import { Slide, CanvasElement, TextProperties, ShapeProperties, ImageProperties } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+import { apiFetch } from './apiClient';
 
 export interface DeconstructResult {
   slide: Slide;
@@ -11,6 +12,30 @@ export interface DeconstructResult {
   detectedShapeCount: number;
   backgroundColor: string;
   summary: string;
+}
+
+/** Loose shape of the legacy deconstruct endpoint response (validated field-by-field below). */
+interface RawElement {
+  type?: string;
+  text?: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  zIndex?: number;
+  properties?: Record<string, unknown> & {
+    shapeType?: ShapeProperties['shapeType'];
+    fill?: string; stroke?: string; strokeWidth?: number; borderRadius?: number;
+    src?: string; alt?: string; objectFit?: ImageProperties['objectFit'];
+    text?: string; fontFamily?: string; fontSize?: number; fontWeight?: number; color?: string;
+    alignment?: TextProperties['alignment']; letterSpacing?: number; lineHeight?: number;
+    textCase?: TextProperties['textCase'];
+  };
+}
+
+interface RawDeconstructResponse {
+  background?: { type?: string; value?: string };
+  elements?: RawElement[];
 }
 
 /**
@@ -21,8 +46,8 @@ export async function verifyGeminiConnection(): Promise<{ ok: boolean; model?: s
     const res = await fetch('/api/test-gemini');
     const data = await res.json();
     return data;
-  } catch (err: any) {
-    return { ok: false, error: err.message || 'Network request failed' };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Network request failed' };
   }
 }
 
@@ -58,22 +83,12 @@ export async function deconstructSlideImage(
     mimeType = fileOrBase64.type || 'image/png';
   }
 
-  // Call the backend endpoint
-  const response = await fetch('/api/deconstruct-slide', {
+  // Call the backend endpoint (admin-only; authenticated with the session JWT)
+  const result = await apiFetch<RawDeconstructResponse>('/api/deconstruct-slide', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      imageBase64: base64String,
-      mimeType,
-    }),
+    json: { imageBase64: base64String, mimeType },
+    timeoutMs: 60_000,
   });
-
-  if (!response.ok) {
-    const errData = await response.json().catch(() => ({}));
-    throw new Error(errData.error || `Deconstruction request failed with status ${response.status}`);
-  }
-
-  const result = await response.json();
   const slideId = `slide_${uuidv4().slice(0, 8)}`;
 
   // Parse background
@@ -81,7 +96,7 @@ export async function deconstructSlideImage(
   const bgValue = result.background?.value || '#11100E';
 
   // Parse elements into CanvasElement[]
-  const rawElements: any[] = Array.isArray(result.elements) ? result.elements : [];
+  const rawElements: RawElement[] = Array.isArray(result.elements) ? result.elements : [];
   const canvasElements: CanvasElement[] = [];
 
   let textCount = 0;
@@ -111,7 +126,7 @@ export async function deconstructSlideImage(
         locked: false,
         visible: true,
         properties: {
-          shapeType: (sp.shapeType as any) || 'rectangle',
+          shapeType: sp.shapeType || 'rectangle',
           fill: sp.fill || '#FF5A00',
           stroke: sp.stroke || undefined,
           strokeWidth: sp.strokeWidth || undefined,

@@ -20,7 +20,7 @@ export function AdminGuard({ children }: AdminGuardProps) {
     );
   }
 
-  const hasLocalAdmin = typeof window !== 'undefined' && !!localStorage.getItem('swapp_admin_session');
+  const hasLocalAdmin = typeof window !== 'undefined' && false;
   const effectiveAdmin = isAdmin || hasLocalAdmin;
 
   if (!effectiveAdmin) {

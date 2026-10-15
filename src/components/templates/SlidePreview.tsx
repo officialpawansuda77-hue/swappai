@@ -1,8 +1,10 @@
+import { useState, useEffect, useRef } from 'react';
 import { Slide, CanvasElement, TextProperties, ShapeProperties, ImageProperties } from '../../types';
 
 interface SlidePreviewProps {
   slide: Slide;
   scale?: number;
+  autoScale?: boolean;
   className?: string;
   style?: React.CSSProperties;
   onClick?: () => void;
@@ -98,34 +100,71 @@ function renderElement(el: CanvasElement, scale: number) {
 
 export default function SlidePreview({
   slide,
-  scale = 1,
+  scale: propScale,
+  autoScale = false,
   className = '',
   style,
   onClick,
   isSelected = false,
 }: SlidePreviewProps) {
-  const bgStyle: React.CSSProperties =
-    slide.background.type === 'solid'
-      ? (slide.background.value.includes('gradient')
-          ? { background: slide.background.value }
-          : { backgroundColor: slide.background.value })
-      : { backgroundImage: `url(${slide.background.value})`, backgroundSize: 'cover', backgroundPosition: 'center' };
+  const containerRef = useRef<HTMLDivElement>(null);
+  const slideWidth = slide?.width || 1080;
+  const slideHeight = slide?.height || 1350;
 
-  const sortedElements = [...slide.elements].sort((a, b) => a.zIndex - b.zIndex);
+  const [measuredScale, setMeasuredScale] = useState<number>(() => {
+    if (!autoScale && propScale !== undefined) return propScale;
+    return 280 / slideWidth;
+  });
+
+  useEffect(() => {
+    if (!autoScale && propScale !== undefined) {
+      setMeasuredScale(propScale);
+      return;
+    }
+
+    const node = containerRef.current;
+    if (!node) return;
+
+    const update = () => {
+      const w = node.clientWidth || node.getBoundingClientRect().width;
+      if (w > 0 && slideWidth > 0) {
+        setMeasuredScale(w / slideWidth);
+      }
+    };
+
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(node);
+    return () => ro.disconnect();
+  }, [autoScale, propScale, slideWidth]);
+
+  const effectiveScale = (!autoScale && propScale !== undefined) ? propScale : measuredScale;
+
+  const bg = slide?.background || { type: 'solid', value: '#111111' };
+  const bgStyle: React.CSSProperties =
+    bg.type === 'solid'
+      ? (bg.value.includes('gradient')
+          ? { background: bg.value }
+          : { backgroundColor: bg.value })
+      : { backgroundImage: `url(${bg.value})`, backgroundSize: 'cover', backgroundPosition: 'center' };
+
+  const sortedElements = [...(slide?.elements || [])].sort((a, b) => a.zIndex - b.zIndex);
 
   return (
     <div
+      ref={containerRef}
       onClick={onClick}
       className={`relative overflow-hidden flex-shrink-0 ${isSelected ? 'ring-2 ring-[#FF5A00]' : ''} ${className}`}
       style={{
-        width: slide.width * scale,
-        height: slide.height * scale,
+        width: autoScale ? '100%' : (slideWidth * effectiveScale),
+        height: autoScale ? '100%' : (slideHeight * effectiveScale),
         ...bgStyle,
         cursor: onClick ? 'pointer' : 'default',
         ...style,
       }}
     >
-      {sortedElements.map(el => renderElement(el, scale))}
+      {sortedElements.map(el => renderElement(el, effectiveScale))}
     </div>
   );
 }
+
