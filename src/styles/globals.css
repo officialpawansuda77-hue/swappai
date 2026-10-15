@@ -268,6 +268,15 @@ a, button, [role="button"] {
 .animate-on-scroll-delay-3 { transition-delay: 0.3s; }
 .animate-on-scroll-delay-4 { transition-delay: 0.4s; }
 
+/* Template grid: CSS-only staggered fade (survives React re-renders) */
+@keyframes templateGridIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.template-grid-item {
+  animation: templateGridIn 0.5s ease both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-on-scroll {
     opacity: 1;

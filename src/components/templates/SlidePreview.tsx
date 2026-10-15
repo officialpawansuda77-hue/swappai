@@ -41,8 +41,11 @@ function renderElement(el: CanvasElement, scale: number) {
           lineHeight: props.lineHeight || 1.3,
           textTransform: props.textCase === 'uppercase' ? 'uppercase' : props.textCase === 'lowercase' ? 'lowercase' : 'none',
           textDecoration: props.textDecoration === 'underline' ? 'underline' : 'none',
-          display: 'flex',
-          alignItems: 'flex-start',
+          fontStyle: props.fontStyle === 'italic' ? 'italic' : 'normal',
+          ...(props.strokeColor && props.strokeWidth
+            ? { WebkitTextStroke: `${props.strokeWidth * scale}px ${props.strokeColor}`, paintOrder: 'stroke fill' }
+            : {}),
+          display: 'block',
           overflow: 'hidden',
           wordBreak: 'break-word',
           whiteSpace: 'pre-wrap',
@@ -57,7 +60,7 @@ function renderElement(el: CanvasElement, scale: number) {
     const props = el.properties as ShapeProperties;
     const shapeStyle: React.CSSProperties = {
       ...style,
-      backgroundColor: props.fill || '#111111',
+      background: props.fill || '#111111',
       border: props.stroke ? `${(props.strokeWidth || 1) * scale}px solid ${props.stroke}` : 'none',
       borderRadius:
         props.shapeType === 'circle'

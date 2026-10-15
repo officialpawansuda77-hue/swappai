@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, ArrowRight, Layers } from 'lucide-react';
 import { Template } from '../../types';
@@ -27,7 +27,20 @@ export default function TemplateCard({
   const [saved, setSaved] = useState(isSaved);
 
   const firstSlide = template.slides[0];
-  const scale = 220 / 1080; // card width / slide width
+  const slideWidth = firstSlide?.width || 1080;
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [cardWidth, setCardWidth] = useState(220);
+  const scale = cardWidth / slideWidth;
+
+  useEffect(() => {
+    const node = previewRef.current;
+    if (!node) return;
+    const update = () => setCardWidth(node.clientWidth || 220);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(node);
+    return () => ro.disconnect();
+  }, []);
 
   const handleSave = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -43,7 +56,7 @@ export default function TemplateCard({
       onMouseLeave={() => setHovered(false)}
     >
       {/* Slide preview */}
-      <div className="relative overflow-hidden" style={{ aspectRatio: template.aspectRatio === '4:5' ? '4/5' : '1/1' }}>
+      <div ref={previewRef} className="relative overflow-hidden" style={{ aspectRatio: template.aspectRatio === '4:5' ? '4/5' : template.aspectRatio === '3:4' ? '3/4' : '1/1' }}>
         {firstSlide ? (
           <SlidePreview
             slide={firstSlide}

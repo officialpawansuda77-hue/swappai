@@ -5,11 +5,13 @@ import {
   Plus, Copy, Trash2, Type, Image as ImageIcon, Square, Layers, Palette,
   AlignLeft, AlignCenter, AlignRight, Lock, Unlock,
   RotateCcw, ArrowLeft, Sparkles, X, LayoutGrid, ArrowUp, ArrowDown, Wallpaper, Scissors, Loader2, Star,
-  SlidersHorizontal, Share2
+  SlidersHorizontal, Share2,
+  Italic, Underline, CaseUpper, ImagePlus
 } from 'lucide-react';
 import { useEditorStore } from '../hooks/useEditorStore';
 import { useAuth } from '../contexts/AuthContext';
 import { getProjectById, saveUserProject, createProjectFromTemplate, createProjectFromTemplateAsync } from '../lib/projects';
+import { canGenerateCarousel, recordCarouselGeneration } from '../lib/subscription';
 import { exportSlideToFile } from '../lib/exportSlide';
 import SlidePreview from '../components/templates/SlidePreview';
 import PublishTemplateDialog from '../components/editor/PublishTemplateDialog';
@@ -158,6 +160,9 @@ function CanvasView({ slide, selectedElementId, onSelectElement, onUpdateElement
                     textAlign: textProps.alignment || 'left',
                     letterSpacing: `${(textProps.letterSpacing || 0) * scale}px`,
                     lineHeight: textProps.lineHeight || 1.3,
+                    textTransform: textProps.textCase === 'uppercase' ? 'uppercase' : textProps.textCase === 'lowercase' ? 'lowercase' : 'none',
+                    fontStyle: textProps.fontStyle === 'italic' ? 'italic' : 'normal',
+                    textDecoration: textProps.textDecoration === 'underline' ? 'underline' : 'none',
                     background: 'rgba(255,255,255,0.08)',
                     border: '1px dashed #FF5A00',
                     outline: 'none',
@@ -183,7 +188,12 @@ function CanvasView({ slide, selectedElementId, onSelectElement, onUpdateElement
                     textAlign: textProps.alignment || 'left',
                     letterSpacing: `${(textProps.letterSpacing || 0) * scale}px`,
                     lineHeight: textProps.lineHeight || 1.3,
-                    textTransform: textProps.textCase === 'uppercase' ? 'uppercase' : 'none',
+                    textTransform: textProps.textCase === 'uppercase' ? 'uppercase' : textProps.textCase === 'lowercase' ? 'lowercase' : 'none',
+                    textDecoration: textProps.textDecoration === 'underline' ? 'underline' : 'none',
+                    fontStyle: textProps.fontStyle === 'italic' ? 'italic' : 'normal',
+                    ...(textProps.strokeColor && textProps.strokeWidth
+                      ? { WebkitTextStroke: `${textProps.strokeWidth * scale}px ${textProps.strokeColor}`, paintOrder: 'stroke fill' }
+                      : {}),
                     overflow: 'hidden',
                     whiteSpace: 'pre-wrap',
                     wordBreak: 'break-word',
@@ -200,7 +210,7 @@ function CanvasView({ slide, selectedElementId, onSelectElement, onUpdateElement
               return (
                 <div style={{
                   width: '100%', height: '100%',
-                  backgroundColor: sp.fill,
+                  background: sp.fill,
                   borderRadius: sp.shapeType === 'circle' ? '50%' : sp.borderRadius ? `${sp.borderRadius * scale}px` : 0,
                   border: sp.stroke ? `${(sp.strokeWidth || 1) * scale}px solid ${sp.stroke}` : 'none',
                 }} />
@@ -504,6 +514,58 @@ function PropertiesPanel({
               ))}
             </div>
           </div>
+
+          <div className="mt-3">
+            <p className="text-[10px] text-[rgba(247,245,240,0.3)] mb-1">Style</p>
+            <div className="flex gap-1">
+              {[
+                { key: 'italic', Icon: Italic, active: textProps.fontStyle === 'italic', toggle: () => updateProp('fontStyle', textProps.fontStyle === 'italic' ? 'normal' : 'italic') },
+                { key: 'underline', Icon: Underline, active: textProps.textDecoration === 'underline', toggle: () => updateProp('textDecoration', textProps.textDecoration === 'underline' ? 'none' : 'underline') },
+                { key: 'upper', Icon: CaseUpper, active: textProps.textCase === 'uppercase', toggle: () => updateProp('textCase', textProps.textCase === 'uppercase' ? 'none' : 'uppercase') },
+              ].map(({ key, Icon, active, toggle }) => (
+                <button
+                  key={key}
+                  id={`text-style-${key}`}
+                  onClick={toggle}
+                  className={`flex-1 py-2 rounded-lg flex items-center justify-center transition-colors ${
+                    active
+                      ? 'bg-[#FF5A00] text-white'
+                      : 'bg-[rgba(255,255,255,0.05)] text-[rgba(247,245,240,0.5)] hover:text-white'
+                  }`}
+                >
+                  <Icon size={13} />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-3">
+            <p className="text-[10px] text-[rgba(247,245,240,0.3)] mb-1">Outline</p>
+            <div className="flex items-center gap-2">
+              <input
+                id="text-outline-color"
+                type="color"
+                value={textProps.strokeColor || '#000000'}
+                onChange={e => updateProp('strokeColor', e.target.value)}
+                className="w-9 h-8 rounded-lg border border-[rgba(255,255,255,0.08)] cursor-pointer bg-transparent"
+              />
+              <input
+                id="text-outline-width"
+                type="number"
+                min={0}
+                max={60}
+                value={textProps.strokeWidth || 0}
+                onChange={e => onUpdate({
+                  properties: {
+                    ...element.properties,
+                    strokeWidth: Number(e.target.value),
+                    strokeColor: textProps.strokeColor || '#000000',
+                  } as any,
+                })}
+                className="flex-1 bg-[rgba(255,255,255,0.06)] text-[rgba(247,245,240,0.8)] text-[12px] p-2 rounded-lg border border-[rgba(255,255,255,0.08)] outline-none"
+              />
+            </div>
+          </div>
         </div>
       )}
 
@@ -572,6 +634,43 @@ function PropertiesPanel({
           <div className="aspect-video rounded-lg overflow-hidden bg-black/40 mb-3 border border-[rgba(255,255,255,0.08)]">
             <img src={imageProps.src} alt="" className="w-full h-full object-cover" />
           </div>
+
+          <label
+            id="replace-image-btn"
+            className="w-full mb-3 py-2 px-3 rounded-lg bg-[#FF5A00] hover:bg-[#ff6f22] text-[11px] font-semibold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <ImagePlus size={13} /> Replace Image
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={e => {
+                const file = e.target.files?.[0];
+                if (!file || !file.type.startsWith('image/')) return;
+                const reader = new FileReader();
+                reader.onload = ev => {
+                  const dataUrl = ev.target?.result as string;
+                  if (!dataUrl) return;
+                  // downscale so autosave payloads stay small
+                  const img = new Image();
+                  img.onload = () => {
+                    const MAX = 1600;
+                    const s = Math.min(1, MAX / Math.max(img.width, img.height));
+                    if (s === 1 && file.size < 400_000) { updateProp('src', dataUrl); return; }
+                    const c = document.createElement('canvas');
+                    c.width = Math.round(img.width * s);
+                    c.height = Math.round(img.height * s);
+                    c.getContext('2d')?.drawImage(img, 0, 0, c.width, c.height);
+                    updateProp('src', c.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.85));
+                  };
+                  img.onerror = () => updateProp('src', dataUrl);
+                  img.src = dataUrl;
+                };
+                reader.readAsDataURL(file);
+                e.target.value = '';
+              }}
+            />
+          </label>
 
           <div className="mb-3">
             <div className="flex items-center justify-between mb-1">
@@ -713,7 +812,7 @@ export default function EditorPage() {
 
   // Paywall guard defense-in-depth
   useEffect(() => {
-    if (!authLoading && !user && !profile && !localStorage.getItem('swapp_admin_session')) {
+    if (!authLoading && !user && !profile && true) {
       navigate('/pricing', { replace: true });
     }
   }, [authLoading, user, profile, navigate]);
@@ -721,12 +820,21 @@ export default function EditorPage() {
   // Initialize project
   useEffect(() => {
     if (authLoading) return;
-    if (!user && !profile && !localStorage.getItem('swapp_admin_session')) return;
+    if (!user && !profile && true) return;
     let isCancelled = false;
 
     async function initProject() {
       if (templateId) {
         if (!editor.state.project || editor.state.project.templateId !== templateId) {
+          if (uid) {
+            const check = await canGenerateCarousel(uid);
+            if (!check.allowed) {
+              toast('Monthly carousel limit reached. Please get more generations or upgrade your plan.');
+              setTimeout(() => navigate('/dashboard', { replace: true }), 1200);
+              return;
+            }
+            await recordCarouselGeneration(uid);
+          }
           const project = await createProjectFromTemplateAsync(templateId, topic, uid);
           await saveUserProject(project, uid);
           if (!isCancelled) {
@@ -751,6 +859,15 @@ export default function EditorPage() {
         }
       } else if (projectId === 'new' && !templateId) {
         if (!editor.state.project) {
+          if (uid) {
+            const check = await canGenerateCarousel(uid);
+            if (!check.allowed) {
+              toast('Monthly carousel limit reached. Please get more generations or upgrade your plan.');
+              setTimeout(() => navigate('/dashboard', { replace: true }), 1200);
+              return;
+            }
+            await recordCarouselGeneration(uid);
+          }
           const project: Project = {
             id: uuidv4(),
             userId: uid || 'anonymous',

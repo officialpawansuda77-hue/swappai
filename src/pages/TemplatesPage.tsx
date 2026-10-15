@@ -246,7 +246,7 @@ export default function TemplatesPage() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
               {filtered.map((t, i) => (
-                <div key={t.id} className={`animate-on-scroll animate-on-scroll-delay-${Math.min(i % 5 + 1, 4)}`}>
+                <div key={t.id} className="template-grid-item" style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}>
                   <TemplateCard
                     template={t}
                     creatorName={t.creatorName}

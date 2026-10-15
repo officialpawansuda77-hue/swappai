@@ -14,6 +14,10 @@ export interface TextProperties {
   lineHeight?: number;
   textCase?: 'none' | 'uppercase' | 'lowercase';
   textDecoration?: 'none' | 'underline';
+  fontStyle?: 'normal' | 'italic';
+  /** Outline around glyphs (drawn behind the fill) */
+  strokeColor?: string;
+  strokeWidth?: number;
 }
 
 export interface ImageProperties {
