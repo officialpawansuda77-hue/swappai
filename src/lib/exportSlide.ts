@@ -154,7 +154,8 @@ function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number
   return out;
 }
 
-async function ensureFontsLoaded(slide: Slide) {
+/** Preload the exact weight/italic specs used on a slide so canvas never falls back. */
+async function ensureCanvasFontSpecs(slide: Slide) {
   if (typeof document === 'undefined' || !(document as any).fonts) return;
   const specs = new Set<string>();
   for (const el of slide.elements) {
@@ -188,7 +189,7 @@ export async function renderSlideToCanvas(slide: Slide): Promise<HTMLCanvasEleme
   const ctx = canvas.getContext('2d');
   if (!ctx) return canvas;
 
-  await ensureFontsLoaded(slide);
+  await ensureCanvasFontSpecs(slide);
 
   // 1. Draw Background
   if (slide.background.type === 'solid') {
