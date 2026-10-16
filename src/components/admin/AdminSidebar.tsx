@@ -71,10 +71,25 @@ export default function AdminSidebar({ collapsed = false, onToggle }: AdminSideb
         className="flex items-center justify-between px-4 py-4 border-b"
         style={{ borderColor: 'rgba(255,255,255,0.06)', minHeight: 56 }}
       >
-        {!collapsed && (
-          <Link to="/" className="flex items-center gap-0.5 no-underline">
-            <span className="text-[17px] font-black tracking-[-0.04em] text-[#F7F5F0]" style={{ fontFamily: 'Manrope, Inter, sans-serif' }}>swapp</span>
-            <span className="text-[17px] font-black tracking-[-0.04em] text-[#FF5A00]" style={{ fontFamily: 'Manrope, Inter, sans-serif' }}>.ai</span>
+        {!collapsed ? (
+          <Link to="/" className="flex items-center gap-2 no-underline group">
+            <img
+              src="/logo.png"
+              alt="SWAPP.AI"
+              className="w-7 h-7 rounded-lg object-contain transition-transform group-hover:scale-105"
+            />
+            <div className="flex items-center">
+              <span className="text-[17px] font-black tracking-[-0.04em] text-[#F7F5F0]" style={{ fontFamily: 'Manrope, Inter, sans-serif' }}>swapp</span>
+              <span className="text-[17px] font-black tracking-[-0.04em] text-[#FF5A00]" style={{ fontFamily: 'Manrope, Inter, sans-serif' }}>.ai</span>
+            </div>
+          </Link>
+        ) : (
+          <Link to="/" className="no-underline flex items-center justify-center group" title="SWAPP.AI">
+            <img
+              src="/logo.png"
+              alt="SWAPP.AI"
+              className="w-7 h-7 rounded-lg object-contain transition-transform group-hover:scale-110"
+            />
           </Link>
         )}
         <button

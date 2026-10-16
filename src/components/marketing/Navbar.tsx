@@ -72,20 +72,27 @@ export default function Navbar() {
         <div className="container-wide">
           <div className="flex items-center justify-between h-[64px]">
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-1.5 no-underline group">
-              <span
-                className="text-[20px] font-black tracking-[-0.04em] text-[#111111] font-display"
-                style={{ fontFamily: 'Manrope, Inter, sans-serif' }}
-              >
-                swapp
+            <Link to="/" className="flex items-center gap-2.5 no-underline group">
+              <img
+                src="/logo.png"
+                alt="SWAPP.AI"
+                className="w-8 h-8 rounded-lg object-contain transition-transform group-hover:scale-105 shadow-sm"
+              />
+              <span className="flex items-center">
+                <span
+                  className="text-[20px] font-black tracking-[-0.04em] text-[#111111] font-display"
+                  style={{ fontFamily: 'Manrope, Inter, sans-serif' }}
+                >
+                  swapp
+                </span>
+                <span
+                  className="text-[20px] font-black tracking-[-0.04em] text-[#FF5A00] font-display"
+                  style={{ fontFamily: 'Manrope, Inter, sans-serif' }}
+                >
+                  .ai
+                </span>
+                <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-[#FF5A00] opacity-80 group-hover:scale-125 transition-transform" />
               </span>
-              <span
-                className="text-[20px] font-black tracking-[-0.04em] text-[#FF5A00] font-display"
-                style={{ fontFamily: 'Manrope, Inter, sans-serif' }}
-              >
-                .ai
-              </span>
-              <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-[#FF5A00] opacity-80 group-hover:scale-125 transition-transform" />
             </Link>
 
             {/* Desktop Nav */}

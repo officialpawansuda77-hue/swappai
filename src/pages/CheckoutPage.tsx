@@ -54,10 +54,17 @@ export default function CheckoutPage() {
     <div className="min-h-screen bg-[#F7F5F0] text-[#111111] flex flex-col justify-between selection:bg-[#FF5A00] selection:text-white">
       {/* Top Bar */}
       <header className="px-6 py-5 flex items-center justify-between border-b border-[rgba(17,17,17,0.06)] bg-white">
-        <Link to="/" className="flex items-center gap-1.5 no-underline">
-          <span className="text-[20px] font-black tracking-[-0.04em] text-[#111111]">swapp</span>
-          <span className="text-[20px] font-black tracking-[-0.04em] text-[#FF5A00]">.ai</span>
-          <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-[#FF5A00]" />
+        <Link to="/" className="flex items-center gap-2.5 no-underline group">
+          <img
+            src="/logo.png"
+            alt="SWAPP.AI"
+            className="w-8 h-8 rounded-lg object-contain transition-transform group-hover:scale-105"
+          />
+          <div className="flex items-center">
+            <span className="text-[20px] font-black tracking-[-0.04em] text-[#111111]">swapp</span>
+            <span className="text-[20px] font-black tracking-[-0.04em] text-[#FF5A00]">.ai</span>
+            <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-[#FF5A00]" />
+          </div>
         </Link>
         <Link
           to="/pricing"

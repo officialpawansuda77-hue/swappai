@@ -7,6 +7,14 @@ export interface Icon3DItem {
 }
 
 export const ICONS_3D: Icon3DItem[] = [
+  // ── SWAPP Official ──
+  {
+    id: 'swapp-mascot',
+    name: 'SWAPP Mascot',
+    src: '/logo.png',
+    category: 'ai',
+    tags: ['swapp', 'swapp.ai', 'logo', 'mascot', 'axolotl', 'brand', 'carousel'],
+  },
   // ── AI Tools ──
   {
     id: 'chatgpt',

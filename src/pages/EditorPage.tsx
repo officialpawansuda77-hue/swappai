@@ -1174,10 +1174,15 @@ export default function EditorPage() {
                 await saveUserProject(editor.state.project, uid);
               }
             }}
-            className="p-2 rounded-lg text-[rgba(247,245,240,0.6)] hover:text-white hover:bg-[rgba(255,255,255,0.06)] transition-colors flex-shrink-0 min-w-[36px] min-h-[36px] flex items-center justify-center"
+            className="flex items-center gap-2 p-1.5 pr-2.5 rounded-lg text-[rgba(247,245,240,0.7)] hover:text-white hover:bg-[rgba(255,255,255,0.06)] transition-colors flex-shrink-0 group no-underline"
             title="Back to Dashboard"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={16} className="text-[rgba(247,245,240,0.5)] group-hover:text-white transition-colors" />
+            <img
+              src="/logo.png"
+              alt="SWAPP.AI"
+              className="w-6 h-6 rounded-md object-contain transition-transform group-hover:scale-105"
+            />
           </Link>
           <div className="w-px h-5 bg-[rgba(255,255,255,0.08)] hidden md:block" />
           <input

@@ -91,6 +91,29 @@ export default function BrandKitPanel({
     onToast(`Added brand handle ${kit.handle} to slide`);
   };
 
+  const handleAddBrandLogo = () => {
+    const el: CanvasElement = {
+      id: uuidv4(),
+      type: 'image',
+      x: 80,
+      y: 80,
+      width: 140,
+      height: 140,
+      rotation: 0,
+      opacity: 1,
+      zIndex: 30,
+      locked: false,
+      visible: true,
+      properties: {
+        src: '/logo.png',
+        alt: `${kit.brandName || 'SWAPP'} Logo`,
+        objectFit: 'contain',
+      },
+    };
+    onAddElement(el);
+    onToast(`Added logo to slide`);
+  };
+
   return (
     <div className="flex flex-col h-full overflow-y-auto p-3 text-[#F7F5F0]">
       <div className="flex items-center gap-2 mb-3 pb-2 border-b border-[rgba(255,255,255,0.06)]">
@@ -186,6 +209,14 @@ export default function BrandKitPanel({
 
       {/* Quick Action Buttons */}
       <div className="flex flex-col gap-2 mt-auto pt-2 border-t border-[rgba(255,255,255,0.06)]">
+        <button
+          onClick={handleAddBrandLogo}
+          className="w-full py-2.5 px-3 rounded-xl bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.1)] text-[12px] font-semibold text-white flex items-center justify-center gap-2 transition-all"
+        >
+          <img src="/logo.png" alt="Logo" className="w-4 h-4 rounded object-contain" />
+          Add Logo to Slide
+        </button>
+
         <button
           onClick={handleAddBrandHandle}
           className="w-full py-2.5 px-3 rounded-xl bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.1)] text-[12px] font-semibold text-white flex items-center justify-center gap-1.5 transition-all"

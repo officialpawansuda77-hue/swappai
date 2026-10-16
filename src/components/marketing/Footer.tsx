@@ -9,9 +9,16 @@ export default function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 md:gap-12 pb-10 md:pb-16 border-b border-[rgba(255,255,255,0.08)]">
           {/* Brand */}
           <div className="col-span-2 md:col-span-2">
-            <Link to="/" className="flex items-center gap-1 no-underline mb-4">
-              <span className="text-[22px] font-black tracking-[-0.04em] text-[#F7F5F0]" style={{ fontFamily: 'Manrope, Inter, sans-serif' }}>swapp</span>
-              <span className="text-[22px] font-black tracking-[-0.04em] text-[#FF5A00]" style={{ fontFamily: 'Manrope, Inter, sans-serif' }}>.ai</span>
+            <Link to="/" className="flex items-center gap-2.5 no-underline mb-4 group">
+              <img
+                src="/logo.png"
+                alt="SWAPP.AI"
+                className="w-9 h-9 rounded-lg object-contain transition-transform group-hover:scale-105"
+              />
+              <span className="flex items-center">
+                <span className="text-[22px] font-black tracking-[-0.04em] text-[#F7F5F0]" style={{ fontFamily: 'Manrope, Inter, sans-serif' }}>swapp</span>
+                <span className="text-[22px] font-black tracking-[-0.04em] text-[#FF5A00]" style={{ fontFamily: 'Manrope, Inter, sans-serif' }}>.ai</span>
+              </span>
             </Link>
             <p className="text-[15px] text-[rgba(247,245,240,0.5)] leading-relaxed max-w-[260px]">
               Make something worth swiping.

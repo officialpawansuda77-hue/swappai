@@ -10,6 +10,14 @@ export default function NotFoundPage() {
       <Navbar />
 
       <main className="container-narrow py-24 text-center">
+        <div className="flex justify-center mb-6">
+          <img
+            src="/logo.png"
+            alt="SWAPP.AI Mascot"
+            className="w-24 h-24 rounded-2xl object-contain drop-shadow-md animate-bounce-subtle"
+          />
+        </div>
+
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[rgba(255,90,0,0.1)] text-[#FF5A00] text-[12px] font-bold tracking-wider uppercase mb-6">
           <Compass size={14} /> 404 Error
         </div>
