@@ -322,6 +322,20 @@ BEGIN
     RETURN NEW;
   END IF;
 
+  -- On INSERT, reset protected fields to defaults for regular users
+  IF TG_OP = 'INSERT' THEN
+    NEW.role := 'user';
+    NEW.plan := 'starter';
+    NEW.subscription_status := 'active';
+    NEW.monthly_generation_limit := 5;
+    NEW.generations_used := 0;
+    NEW.extra_generations := 0;
+    NEW.dodo_subscription_id := NULL;
+    NEW.dodo_customer_id := NULL;
+    RETURN NEW;
+  END IF;
+
+  -- For regular authenticated users on UPDATE, lock sensitive fields
   IF NEW.role IS DISTINCT FROM OLD.role THEN
     RAISE EXCEPTION 'Unauthorized: You cannot modify your user role.';
   END IF;
@@ -353,7 +367,7 @@ $$;
 
 DROP TRIGGER IF EXISTS trg_protect_profile_sensitive_columns ON public.profiles;
 CREATE TRIGGER trg_protect_profile_sensitive_columns
-  BEFORE UPDATE ON public.profiles
+  BEFORE INSERT OR UPDATE ON public.profiles
   FOR EACH ROW
   EXECUTE FUNCTION public.protect_profile_sensitive_columns();
 
