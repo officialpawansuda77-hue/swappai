@@ -2,6 +2,7 @@ import { Template, Slide, CanvasElement } from '../types';
 import { supabase } from './supabase';
 import { CRAZY_TEMPLATES } from './crazyTemplates';
 import { REFERENCE_TEMPLATES } from './referenceTemplates';
+import { REFERENCE_TEMPLATES_2 } from './referenceTemplates2';
 
 // ─── HELPER to create text elements ──────────────────────────────────────────
 const textEl = (
@@ -312,6 +313,7 @@ export const TEMPLATE_VIRAL_CAROUSELS: Template = {
 
 export const SEED_TEMPLATES: Template[] = [
   ...REFERENCE_TEMPLATES,
+  ...REFERENCE_TEMPLATES_2,
   ...CRAZY_TEMPLATES,
   TEMPLATE_AI_TOOLS,
   TEMPLATE_VIRAL_CAROUSELS

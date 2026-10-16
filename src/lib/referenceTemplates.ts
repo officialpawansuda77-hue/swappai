@@ -22,7 +22,7 @@ import {
 
 // ─── ELEMENT BUILDERS ────────────────────────────────────────────────────────
 
-type El = Omit<CanvasElement, 'id' | 'zIndex'> & { zIndex?: number };
+export type El = Omit<CanvasElement, 'id' | 'zIndex'> & { zIndex?: number };
 
 interface TOpts {
   font?: string;
@@ -40,7 +40,7 @@ interface TOpts {
   op?: number;
 }
 
-const T = (text: string, x: number, y: number, w: number, h: number, size: number, o: TOpts = {}): El => ({
+export const T = (text: string, x: number, y: number, w: number, h: number, size: number, o: TOpts = {}): El => ({
   type: 'text', x, y, width: w, height: h,
   rotation: o.rot ?? 0, opacity: o.op ?? 1, locked: false, visible: true,
   properties: {
@@ -72,21 +72,21 @@ const shape = (shapeType: 'rectangle' | 'circle', x: number, y: number, w: numbe
   },
 });
 
-const R = (x: number, y: number, w: number, h: number, fill: string, o: SOpts = {}): El => shape('rectangle', x, y, w, h, fill, o);
-const C = (x: number, y: number, w: number, h: number, fill: string, o: SOpts = {}): El => shape('circle', x, y, w, h, fill, o);
+export const R = (x: number, y: number, w: number, h: number, fill: string, o: SOpts = {}): El => shape('rectangle', x, y, w, h, fill, o);
+export const C = (x: number, y: number, w: number, h: number, fill: string, o: SOpts = {}): El => shape('circle', x, y, w, h, fill, o);
 
 interface IOpts { fit?: 'cover' | 'contain'; r?: number; rot?: number; op?: number }
 
 /** Image layer — replaceable in the editor */
-const I = (src: string, x: number, y: number, w: number, h: number, o: IOpts = {}): El => ({
+export const I = (src: string, x: number, y: number, w: number, h: number, o: IOpts = {}): El => ({
   type: 'image', x, y, width: w, height: h,
   rotation: o.rot ?? 0, opacity: o.op ?? 1, locked: false, visible: true,
   properties: { src, alt: '', objectFit: o.fit ?? 'cover', ...(o.r ? { borderRadius: o.r } : {}) },
 });
 
-const pad = (n: number) => String(n).padStart(2, '0');
+export const pad = (n: number) => String(n).padStart(2, '0');
 
-const IMG = {
+export const IMG = {
   portrait: '/carousels/ref/portrait-glasses.jpg',
   field: '/carousels/ref/green-field.jpg',
   cap: '/carousels/ref/cap-selfie.jpg',
@@ -101,7 +101,7 @@ const IMG = {
 
 // ─── TEMPLATE BUILDER ────────────────────────────────────────────────────────
 
-interface SlideDef { bg: string; els: El[] }
+export interface SlideDef { bg: string; els: El[] }
 
 interface TplDef {
   key: string;
@@ -118,7 +118,7 @@ interface TplDef {
   slides: SlideDef[];
 }
 
-const build = (d: TplDef): Template => {
+export const build = (d: TplDef): Template => {
   const id = `ref-${d.key}`;
   const slides: Slide[] = d.slides.map((s, si) => ({
     id: `${id}-s${si + 1}`,
@@ -173,7 +173,7 @@ const pill = (x: number, y: number, w: number, h: number, grad: string, rot: num
 ];
 
 /** Rounded app icon with a centred glyph */
-const app = (x: number, y: number, s: number, bg: string, glyph: string, gc: string, fs: number, o: { stroke?: string; font?: string } = {}): El[] => [
+export const app = (x: number, y: number, s: number, bg: string, glyph: string, gc: string, fs: number, o: { stroke?: string; font?: string } = {}): El[] => [
   R(x, y, s, s, bg, { r: s * 0.23, ...(o.stroke ? { stroke: o.stroke, sw: 3 } : {}) }),
   T(glyph, x, y + s / 2 - fs * 0.62, s, fs * 1.3, fs, { font: o.font ?? 'Inter', weight: 800, color: gc, align: 'center', lh: 1.1, ls: -1 }),
 ];
@@ -443,7 +443,7 @@ const gridLines = (): El[] => {
   return els;
 };
 
-const selBox = (x: number, y: number, w: number, h: number): El[] => {
+export const selBox = (x: number, y: number, w: number, h: number): El[] => {
   const s = 26;
   return [
     R(x, y, w, h, 'rgba(0,0,0,0)', { stroke: '#111111', sw: 3 }),

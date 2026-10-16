@@ -49,31 +49,123 @@ interface CanvasViewProps {
   scale: number;
 }
 
+// Pixels the pointer must travel before a press becomes a drag. Stops taps /
+// clicks from nudging elements and lets mobile users select without moving.
+const DRAG_THRESHOLD_PX = 4;
+
+interface DragSession {
+  id: string;
+  pointerId: number;
+  startX: number;
+  startY: number;
+  elX: number;
+  elY: number;
+  moved: boolean;
+}
+
 function CanvasView({ slide, selectedElementId, onSelectElement, onUpdateElement, scale }: CanvasViewProps) {
-  const [dragging, setDragging] = useState<{ id: string; startX: number; startY: number; elX: number; elY: number } | null>(null);
+  // Drag session lives in a ref (no re-render per event). Only the visual
+  // position is state, throttled to one update per animation frame.
+  const dragRef = useRef<DragSession | null>(null);
+  const pendingPosRef = useRef<{ x: number; y: number } | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const justDraggedRef = useRef(false);
+  const [dragPos, setDragPos] = useState<{ id: string; x: number; y: number } | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const lastTapRef = useRef<{ id: string; time: number } | null>(null);
+  // Parent passes a new callback each render; read it via ref so endDrag stays
+  // stable (otherwise the slide-change effect below would cancel drags).
+  const onUpdateRef = useRef(onUpdateElement);
+  onUpdateRef.current = onUpdateElement;
+
+  // Ends the active drag. Position is written to the store ONCE here, so a
+  // drag is a single undo step and the editor doesn't re-render on every move.
+  const endDrag = useCallback(() => {
+    const session = dragRef.current;
+    if (!session) return;
+    dragRef.current = null;
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    const finalPos = pendingPosRef.current;
+    pendingPosRef.current = null;
+    setDragPos(null);
+    if (session.moved && finalPos) {
+      justDraggedRef.current = true;
+      // Swallow the click that follows a drag, then reset.
+      window.setTimeout(() => { justDraggedRef.current = false; }, 0);
+      onUpdateRef.current(session.id, finalPos);
+    }
+  }, []);
 
   // Pointer Events unify mouse + touch, so drag works on mobile too.
-  const handlePointerDown = useCallback((e: React.PointerEvent, el: CanvasElement) => {
+  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>, el: CanvasElement) => {
     if (el.locked || editingTextId === el.id) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return; // left button only
+    if (dragRef.current) return; // ignore a second finger mid-drag
     e.stopPropagation();
     onSelectElement(el.id);
-    setDragging({ id: el.id, startX: e.clientX, startY: e.clientY, elX: el.x, elY: el.y });
+    // Capture: keep receiving move/up even if the pointer leaves the canvas,
+    // so the element can never get "stuck" to the cursor.
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* unsupported */ }
+    dragRef.current = {
+      id: el.id, pointerId: e.pointerId,
+      startX: e.clientX, startY: e.clientY,
+      elX: el.x, elY: el.y, moved: false,
+    };
   }, [onSelectElement, editingTextId]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!dragging) return;
-    const dx = (e.clientX - dragging.startX) / scale;
-    const dy = (e.clientY - dragging.startY) / scale;
-    onUpdateElement(dragging.id, { x: Math.round(dragging.elX + dx), y: Math.round(dragging.elY + dy) });
-  }, [dragging, scale, onUpdateElement]);
+    const session = dragRef.current;
+    if (!session || e.pointerId !== session.pointerId) return;
+    // Mouse button already released but we missed the up event → stop now.
+    if (e.pointerType === 'mouse' && e.buttons === 0) { endDrag(); return; }
+    const dxPx = e.clientX - session.startX;
+    const dyPx = e.clientY - session.startY;
+    if (!session.moved && Math.hypot(dxPx, dyPx) < DRAG_THRESHOLD_PX) return;
+    session.moved = true;
+    pendingPosRef.current = {
+      x: Math.round(session.elX + dxPx / scale),
+      y: Math.round(session.elY + dyPx / scale),
+    };
+    if (rafRef.current === null) {
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        const pos = pendingPosRef.current;
+        const active = dragRef.current;
+        if (pos && active) setDragPos({ id: active.id, x: pos.x, y: pos.y });
+      });
+    }
+  }, [scale, endDrag]);
 
-  const handlePointerUp = useCallback(() => setDragging(null), []);
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    const session = dragRef.current;
+    if (session && e.pointerId === session.pointerId) endDrag();
+  }, [endDrag]);
+
+  // Safety nets: release outside the window, tab switch, or slide change.
+  useEffect(() => {
+    const stop = () => endDrag();
+    window.addEventListener('pointerup', stop);
+    window.addEventListener('pointercancel', stop);
+    window.addEventListener('blur', stop);
+    return () => {
+      window.removeEventListener('pointerup', stop);
+      window.removeEventListener('pointercancel', stop);
+      window.removeEventListener('blur', stop);
+    };
+  }, [endDrag]);
+
+  useEffect(() => {
+    endDrag();
+    setEditingTextId(null);
+  }, [slide.id, endDrag]);
 
   // Double-tap (touch) or double-click (mouse) to edit text.
   const handleTextTap = useCallback((e: React.SyntheticEvent, el: CanvasElement) => {
     e.stopPropagation();
+    if (justDraggedRef.current) return; // the "click" at the end of a drag
     onSelectElement(el.id);
     if (el.locked) return;
     const now = Date.now();
@@ -97,10 +189,13 @@ function CanvasView({ slide, selectedElementId, onSelectElement, onUpdateElement
   return (
     <div
       className="relative overflow-hidden select-none"
-      style={{ width: slide.width * scale, height: slide.height * scale, ...bgStyle, cursor: dragging ? 'grabbing' : 'default', touchAction: 'none' }}
+      style={{ width: slide.width * scale, height: slide.height * scale, ...bgStyle, cursor: dragPos ? 'grabbing' : 'default', touchAction: 'none' }}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
+      onPointerCancel={endDrag}
+      onLostPointerCapture={endDrag}
+      // Block the browser's native image/text drag, which hijacks the pointer.
+      onDragStart={(e) => e.preventDefault()}
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onSelectElement(null);
@@ -112,6 +207,9 @@ function CanvasView({ slide, selectedElementId, onSelectElement, onUpdateElement
         const isSelected = el.id === selectedElementId;
         const textProps = el.properties as TextProperties;
         const isEditing = editingTextId === el.id;
+        const isDragged = dragPos?.id === el.id;
+        const x = isDragged ? dragPos.x : el.x;
+        const y = isDragged ? dragPos.y : el.y;
 
         return (
           <div
@@ -119,18 +217,20 @@ function CanvasView({ slide, selectedElementId, onSelectElement, onUpdateElement
             onPointerDown={(e) => handlePointerDown(e, el)}
             onClick={(e) => {
               e.stopPropagation();
+              if (justDraggedRef.current) return;
               onSelectElement(el.id);
             }}
             style={{
               position: 'absolute',
-              left: el.x * scale,
-              top: el.y * scale,
+              left: x * scale,
+              top: y * scale,
               width: el.width * scale,
               height: el.height * scale,
               transform: `rotate(${el.rotation}deg)`,
               opacity: el.opacity,
               zIndex: el.zIndex,
-              cursor: el.locked ? 'default' : isEditing ? 'text' : 'grab',
+              cursor: el.locked ? 'default' : isEditing ? 'text' : isDragged ? 'grabbing' : 'grab',
+              willChange: isDragged ? 'left, top' : undefined,
               outline: isSelected ? '2px solid #FF5A00' : '2px solid transparent',
               outlineOffset: 2,
               boxSizing: 'border-box',
@@ -223,6 +323,7 @@ function CanvasView({ slide, selectedElementId, onSelectElement, onUpdateElement
                 <img
                   src={ip.src}
                   alt={ip.alt || ''}
+                  draggable={false}
                   style={{
                     width: '100%',
                     height: '100%',
@@ -1014,7 +1115,30 @@ export default function EditorPage() {
 
   const project = editor.state.project;
   const currentSlide = editor.currentSlide;
-  const canvasScale = 0.45;
+
+  // Fit the canvas to the space available. Fixed 0.45 made the 1080px slide
+  // 486px wide, which overflowed (and got cropped on) phone screens.
+  const MAX_CANVAS_SCALE = 0.45;
+  const [canvasHost, setCanvasHost] = useState<HTMLDivElement | null>(null);
+  const [canvasScale, setCanvasScale] = useState(MAX_CANVAS_SCALE);
+  const slideW = currentSlide?.width ?? 1080;
+  const slideH = currentSlide?.height ?? 1350;
+  useEffect(() => {
+    if (!canvasHost) return;
+    const compute = () => {
+      const isDesktop = window.matchMedia('(min-width: 768px)').matches;
+      const availW = canvasHost.clientWidth - (isDesktop ? 48 : 24);
+      // Leave room for slide nav + size label above/below the canvas.
+      const availH = canvasHost.clientHeight - (isDesktop ? 120 : 90);
+      let s = Math.min(MAX_CANVAS_SCALE, availW / slideW);
+      if (availH > 200) s = Math.min(s, availH / slideH);
+      setCanvasScale(Math.max(0.15, Math.floor(s * 1000) / 1000));
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(canvasHost);
+    return () => ro.disconnect();
+  }, [canvasHost, slideW, slideH]);
 
   if (authLoading || !project) {
     return (
@@ -1309,7 +1433,8 @@ export default function EditorPage() {
 
         {/* ── CANVAS CENTER ──────────────────────────────── */}
         <div
-          className="flex-1 flex items-start md:items-center justify-center overflow-auto bg-[#0D0C0B] pt-4 md:pt-0"
+          ref={setCanvasHost}
+          className="flex-1 min-w-0 flex items-start md:items-center justify-center overflow-auto bg-[#0D0C0B] pt-4 md:pt-0"
           onClick={(e) => {
             if (e.currentTarget === e.target) editor.setSelectedElement(null);
           }}
@@ -1339,8 +1464,8 @@ export default function EditorPage() {
 
               {/* Canvas viewport — responsive scaling */}
               <div
-                className="shadow-[0_20px_50px_rgba(0,0,0,0.6)] border border-[rgba(255,255,255,0.08)] w-full md:w-auto"
-                style={{ borderRadius: 12, overflow: 'hidden', maxWidth: currentSlide.width * canvasScale }}
+                className="shadow-[0_20px_50px_rgba(0,0,0,0.6)] border border-[rgba(255,255,255,0.08)]"
+                style={{ borderRadius: 12, overflow: 'hidden', width: currentSlide.width * canvasScale, boxSizing: 'content-box' }}
               >
                 {editor.state.isPreviewMode ? (
                   <div style={{ width: '100%', aspectRatio: `${currentSlide.width}/${currentSlide.height}`, position: 'relative', overflow: 'hidden' }}>
