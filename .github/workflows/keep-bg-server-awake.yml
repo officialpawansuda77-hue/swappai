@@ -1,8 +1,7 @@
 # Keeps the background-removal server (rembg service used for HD mode) awake.
 # Free instances (e.g. on Render) spin down after 15 mins of inactivity.
 #
-# If BG_REMOVAL_API_URL secret is set in GitHub Actions, it will use that.
-# Otherwise, it automatically defaults to the live Render service:
+# Defaults to the live Render service:
 # https://swappai-bg-removal.onrender.com
 name: Keep background-removal server awake
 
@@ -18,9 +17,8 @@ jobs:
     steps:
       - name: Ping server
         env:
-          BG_REMOVAL_API_URL: ${{ secrets['BG_REMOVAL_API_URL'] }}
+          TARGET_URL: "https://swappai-bg-removal.onrender.com"
         run: |
-          TARGET_URL="${BG_REMOVAL_API_URL:-https://swappai-bg-removal.onrender.com}"
           echo "Pinging background removal server at $TARGET_URL..."
           code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "${TARGET_URL%/}/health" || curl -s -o /dev/null -w '%{http_code}' --max-time 60 "${TARGET_URL%/}/" || true)
           echo "Server responded with HTTP $code"
