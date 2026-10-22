@@ -3,6 +3,8 @@ import { supabase } from './supabase';
 import { CRAZY_TEMPLATES } from './crazyTemplates';
 import { REFERENCE_TEMPLATES } from './referenceTemplates';
 import { REFERENCE_TEMPLATES_2 } from './referenceTemplates2';
+import { TEMPLATE_WEEKEND_AI_PROJECTS } from './weekendAiProjectsTemplate';
+import { PINTEREST_TEMPLATES } from './pinterestTemplates';
 
 // ─── HELPER to create text elements ──────────────────────────────────────────
 const textEl = (
@@ -312,6 +314,8 @@ export const TEMPLATE_VIRAL_CAROUSELS: Template = {
 };
 
 export const SEED_TEMPLATES: Template[] = [
+  ...PINTEREST_TEMPLATES,
+  TEMPLATE_WEEKEND_AI_PROJECTS,
   ...REFERENCE_TEMPLATES,
   ...REFERENCE_TEMPLATES_2,
   ...CRAZY_TEMPLATES,
@@ -327,6 +331,7 @@ const CUSTOM_TEMPLATES_KEY = 'swapp_custom_templates';
 
 export function getCustomTemplates(): Template[] {
   try {
+    if (typeof localStorage === 'undefined') return [];
     const raw = localStorage.getItem(CUSTOM_TEMPLATES_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
@@ -492,8 +497,17 @@ export const getTemplateById = (id: string): Template | undefined => {
   if (id === 'ai-tools' || id === AI_TOOLS_ID) {
     return all.find(t => t.id === AI_TOOLS_ID) || TEMPLATE_AI_TOOLS;
   }
+  if (id === 'weekend-ai-projects' || id === 'ref-weekend-ai-projects') {
+    return all.find(t => t.id === 'ref-weekend-ai-projects') || TEMPLATE_WEEKEND_AI_PROJECTS;
+  }
 
-  // 3. Name match fallback (case insensitive)
+  // 3. Pinterest Templates alias / shortlink match
+  const pinFound = all.find(
+    t => t.id === id || t.id === `ref-${id}` || (t.sourceUrl && t.sourceUrl.includes(id))
+  );
+  if (pinFound) return pinFound;
+
+  // 4. Name match fallback (case insensitive)
   const norm = id.trim().toLowerCase();
   return all.find(t => t.name.toLowerCase() === norm);
 };

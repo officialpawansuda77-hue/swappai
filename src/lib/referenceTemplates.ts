@@ -101,7 +101,12 @@ export const IMG = {
 
 // ─── TEMPLATE BUILDER ────────────────────────────────────────────────────────
 
-export interface SlideDef { bg: string; els: El[] }
+export interface SlideDef {
+  bg: string;
+  els: El[];
+  bgType?: 'solid' | 'image';
+  previewUrl?: string;
+}
 
 interface TplDef {
   key: string;
@@ -116,6 +121,7 @@ interface TplDef {
   trending?: boolean;
   createdAt: string;
   slides: SlideDef[];
+  thumbnailUrl?: string;
 }
 
 export const build = (d: TplDef): Template => {
@@ -125,12 +131,16 @@ export const build = (d: TplDef): Template => {
     order: si,
     width: 1080,
     height: 1350,
-    background: { type: 'solid', value: s.bg },
+    background: {
+      type: s.bgType || (s.bg.startsWith('/') || s.bg.startsWith('http') ? 'image' : 'solid'),
+      value: s.bg,
+    },
     elements: s.els.map((e, ei) => ({
       ...e,
       id: `${id}-s${si + 1}-e${ei + 1}`,
       zIndex: e.zIndex ?? ei + 1,
     })) as CanvasElement[],
+    previewUrl: s.previewUrl,
   }));
 
   return {
@@ -141,7 +151,7 @@ export const build = (d: TplDef): Template => {
     tags: d.tags,
     style: d.style,
     audience: d.audience,
-    thumbnailUrl: '',
+    thumbnailUrl: d.thumbnailUrl || (slides[0]?.previewUrl ?? ''),
     aspectRatio: '4:5',
     width: 1080,
     height: 1350,

@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: Ping server
         env:
-          BG_REMOVAL_API_URL: ${{ secrets.BG_REMOVAL_API_URL }}
+          BG_REMOVAL_API_URL: ${{ secrets['BG_REMOVAL_API_URL'] }}
         run: |
           TARGET_URL="${BG_REMOVAL_API_URL:-https://swappai-bg-removal.onrender.com}"
           echo "Pinging background removal server at $TARGET_URL..."
