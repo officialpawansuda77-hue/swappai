@@ -5,6 +5,7 @@ import { REFERENCE_TEMPLATES } from './referenceTemplates';
 import { REFERENCE_TEMPLATES_2 } from './referenceTemplates2';
 import { TEMPLATE_WEEKEND_AI_PROJECTS } from './weekendAiProjectsTemplate';
 import { PINTEREST_TEMPLATES } from './pinterestTemplates';
+import { VIRAL_TRENDING_10_TEMPLATES } from './viralTrending10Templates';
 
 // ─── HELPER to create text elements ──────────────────────────────────────────
 const textEl = (
@@ -314,6 +315,7 @@ export const TEMPLATE_VIRAL_CAROUSELS: Template = {
 };
 
 export const SEED_TEMPLATES: Template[] = [
+  ...VIRAL_TRENDING_10_TEMPLATES,
   ...PINTEREST_TEMPLATES,
   TEMPLATE_WEEKEND_AI_PROJECTS,
   ...REFERENCE_TEMPLATES,

@@ -160,6 +160,7 @@ export default function SlidePreview({
         height: autoScale ? '100%' : (slideHeight * effectiveScale),
         ...bgStyle,
         cursor: onClick ? 'pointer' : 'default',
+        isolation: 'isolate',
         ...style,
       }}
     >

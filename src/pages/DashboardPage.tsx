@@ -52,7 +52,7 @@ function ProjectCard({ project, templates }: ProjectCardProps) {
             <Layers size={24} className="text-[#6B6B67]" />
           </div>
         )}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100 backdrop-blur-[1px]">
+        <div className="absolute inset-0 z-10 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto backdrop-blur-[1px]">
           <span className="btn-primary btn-sm shadow-md scale-95 group-hover:scale-100 transition-transform">
             Open Editor →
           </span>

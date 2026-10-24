@@ -72,8 +72,8 @@ export default function TemplateCard({
 
         {/* Hover overlay */}
         <div
-          className={`absolute inset-0 flex flex-col items-center justify-center gap-3 transition-all duration-300 ${
-            hovered ? 'opacity-100' : 'opacity-0'
+          className={`absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 transition-all duration-300 ${
+            hovered ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
           style={{ background: 'rgba(17,17,17,0.75)' }}
         >
@@ -95,7 +95,7 @@ export default function TemplateCard({
         </div>
 
         {/* Badges */}
-        <div className="absolute top-3 left-3 flex gap-1.5">
+        <div className="absolute top-3 left-3 z-10 flex gap-1.5">
           {template.isTrending && (
             <span className="tag tag-accent">Trending</span>
           )}
@@ -110,7 +110,7 @@ export default function TemplateCard({
         {/* Save button */}
         <button
           onClick={handleSave}
-          className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
+          className={`absolute top-3 right-3 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
             saved
               ? 'bg-[#FF5A00] text-white'
               : 'bg-white text-[#6B6B67] hover:text-[#FF5A00]'
